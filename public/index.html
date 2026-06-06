@@ -113,6 +113,9 @@
   .dash-item:last-child{border-bottom:none}
   .dash-item .nm{font-weight:600}.dash-item .nm small{color:var(--muted);font-weight:400;margin-left:6px}
   .dash-item .st{font-family:'Space Mono',monospace;color:var(--muted);white-space:nowrap}
+  .track-head{font-size:15px;line-height:1.5;background:rgba(182,255,61,.06);border:1px solid var(--line);
+    border-left:3px solid var(--pitch);border-radius:10px;padding:13px 15px;margin:4px 0 16px}
+  .track-head b{color:#fff}.track-head span{color:var(--muted);font-size:13px}
   /* ---- slip builder ---- */
   .slip-add{all:unset;cursor:pointer;display:inline-block;margin-top:13px;font-family:'Space Mono',monospace;font-size:12px;
     color:var(--text);border:1px solid var(--line);border-radius:7px;padding:6px 11px;transition:border-color .15s,background .15s}
@@ -145,6 +148,7 @@
   </header>
 
   <section class="dash" id="dash" style="display:none"></section>
+  <section class="dash" id="track" style="display:none"></section>
 
   <div class="picker-label">Upcoming fixtures</div>
   <div class="fixtures" id="fixtures"></div>
@@ -358,6 +362,41 @@ async function loadHighlights() {
 }
 
 /* ============================================================
+   TRACK RECORD  — honest backtest from /api/backtest
+   ============================================================ */
+async function loadTrack() {
+  const el = document.getElementById('track');
+  try {
+    const r = await fetch('/api/backtest');
+    const d = await r.json();
+    if (!r.ok || d.empty) return;
+    const ly = d.bands.leansYes;
+    const bandRow = (name, b, desc) => b.n
+      ? `<div class="dash-item"><span class="nm">${name}<small>${desc}</small></span>
+         <span class="st">${b.rate}% · ${b.landed}/${b.n}</span></div>` : '';
+    const mkRow = m => `<div class="dash-item"><span class="nm">${m.label}</span>
+      <span class="st">${m.rate}% · ${m.landed}/${m.n}</span></div>`;
+    const exRow = e => `<div class="dash-item">
+      <span class="nm">${e.team} ${e.label.toLowerCase()}<small>vs ${e.opp} · read ${e.rate}%</small></span>
+      <span class="st" style="color:${e.hit ? 'var(--good)' : 'var(--bad)'}">${e.hit ? '✓ landed' : '✗ missed'}</span></div>`;
+    el.innerHTML = `<h3>Track record</h3>
+      <div class="sub">Every past game replayed using only the 6 games before it — no hindsight, losses included.
+        ${d.matchesAnalysed} games across ${d.teamsUsed} ${d.league} teams.</div>
+      <div class="track-head">When the read said <b>“leans yes”</b>, the outcome actually happened
+        <b>${ly.rate}%</b> of the time <span>(${ly.landed} of ${ly.n} calls)</span></div>
+      <div class="dash-grid">
+        <div class="dash-col"><div class="h">Outcome rate by call type</div>
+          ${bandRow('Leans yes', d.bands.leansYes, 'we backed it')}
+          ${bandRow('Coin-flip', d.bands.coinflip, 'no strong lean')}
+          ${bandRow('Avoid', d.bands.avoid, 'we warned off')}</div>
+        <div class="dash-col"><div class="h">“Leans yes” by market</div>${d.markets.map(mkRow).join('')}</div>
+        <div class="dash-col"><div class="h">Recent calls</div>${d.examples.map(exRow).join('')}</div>
+      </div>`;
+    el.style.display = 'block';
+  } catch (e) { /* leave hidden on failure */ }
+}
+
+/* ============================================================
    CARD BUILDERS
    ============================================================ */
 function teamCard(name, infoKey, games, test, up, down, yesWord, noWord, teamName, matchTag) {
@@ -562,6 +601,7 @@ demoBtn.onclick = showDemo;
 
 loadFixtures();
 loadHighlights();
+loadTrack();
 fixturesEl.parentNode.insertBefore(demoBtn, noteEl.nextSibling);
 </script>
 </body>
