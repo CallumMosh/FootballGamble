@@ -1,17 +1,21 @@
 // api/highlights.js
 // Builds the "Today's best angles" dashboard from league STANDINGS.
-// Why standings? One call per competition returns every team's goals for/against
-// and recent form — so we get league-wide extremes without scanning each team
-// (which would blow the 10-requests-per-minute free-tier cap).
+// One standings call per competition returns every team's goals for/against and
+// form — far cheaper than scanning each team (which would blow the 10-req/min cap).
 //
-// Only in-season competitions are scanned. The big European leagues are on their
-// summer break, so their tables would show last season's final standings — stale
-// and misleading. Add their IDs back here when their seasons resume.
+// AUTO IN-SEASON DETECTION: each competition is only included while its season is
+// actually running. We read the season's start/end dates from the standings
+// response and skip anything finished (off-season tables are last season's — stale)
+// or not yet started. So leagues switch themselves on when they kick off and off
+// when they end — the big 5 included — with no manual edits needed.
 const COMPETITIONS = {
+  2021: 'Premier League',
+  2014: 'La Liga',
+  2019: 'Serie A',
+  2002: 'Bundesliga',
+  2015: 'Ligue 1',
   2000: 'World Cup',
   2013: 'Brasileirão',
-  // 2021: 'Premier League', 2014: 'La Liga', 2019: 'Serie A',
-  // 2002: 'Bundesliga', 2015: 'Ligue 1',   // <- re-enable in season
 };
 
 let cache = { at: 0, data: null };
@@ -19,6 +23,15 @@ const CACHE_MINUTES = 120; // standings move slowly; cache hard to spare the rat
 
 const per = (n, games) => games > 0 ? +(n / games).toFixed(2) : 0;
 const winsInForm = f => (String(f || '').match(/W/g) || []).length;
+
+// is "now" inside this season's window? (lenient if a date is missing)
+function inSeason(season) {
+  if (!season) return true;
+  const now = Date.now();
+  if (season.endDate   && new Date(season.endDate).getTime()   < now) return false; // finished
+  if (season.startDate && new Date(season.startDate).getTime() > now) return false; // not started
+  return true;
+}
 
 export default async function handler(req, res) {
   const key = process.env.FOOTBALL_DATA_KEY;
@@ -30,7 +43,6 @@ export default async function handler(req, res) {
 
   try {
     const ids = Object.keys(COMPETITIONS);
-    // fetch each competition's standings (skip any that error, e.g. not yet started)
     const settled = await Promise.allSettled(ids.map(id =>
       fetch(`https://api.football-data.org/v4/competitions/${id}/standings`, {
         headers: { 'X-Auth-Token': key },
@@ -40,15 +52,15 @@ export default async function handler(req, res) {
     const teams = [];
     settled.forEach((s, i) => {
       if (s.status !== 'fulfilled' || !s.value) return;
+      if (!inSeason(s.value.season)) return;          // skip off-season / not-started leagues
       const league = COMPETITIONS[ids[i]];
       (s.value.standings || []).forEach(block => {
-        if (block.type !== 'TOTAL') return; // ignore HOME/AWAY duplicates
+        if (block.type !== 'TOTAL') return;            // ignore HOME/AWAY duplicates
         (block.table || []).forEach(row => {
-          if ((row.playedGames || 0) < 3) return; // need a meaningful sample
+          if ((row.playedGames || 0) < 3) return;      // need a meaningful sample
           teams.push({
             name: row.team?.shortName || row.team?.name || 'Team',
             league,
-            played: row.playedGames,
             gfPer: per(row.goalsFor, row.playedGames),
             gaPer: per(row.goalsAgainst, row.playedGames),
             formWins: winsInForm(row.form),
