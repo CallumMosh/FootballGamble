@@ -14,8 +14,9 @@ const PRIORITY = [
 ];
 const WINDOW = 6;
 const MAX_TEAMS = 8;
-let cache = { at: 0, data: null };
-const CACHE_MINUTES = 720; // 12h
+let cache = { at: 0, data: null, ttl: 0 };
+const CACHE_MINUTES = 720; // 12h for a real record
+const EMPTY_MINUTES = 10;  // but don't lock in a transient "no data" result
 
 const inSeason = s => {
   if (!s) return true;
@@ -74,7 +75,7 @@ function backtestTeam(team, rows, out) {
 export default async function handler(req, res) {
   const key = process.env.FOOTBALL_DATA_KEY;
   if (!key) return res.status(500).json({ error: 'No API key set.' });
-  if (cache.data && Date.now() - cache.at < CACHE_MINUTES * 60 * 1000) {
+  if (cache.data && Date.now() - cache.at < cache.ttl) {
     return res.status(200).json(cache.data);
   }
 
@@ -94,7 +95,7 @@ export default async function handler(req, res) {
     }
     if (!chosen) {
       const empty = { empty: true, note: 'No in-season league with enough games yet — the track record fills in once matches are played.' };
-      cache = { at: Date.now(), data: empty };
+      cache = { at: Date.now(), data: empty, ttl: EMPTY_MINUTES * 60 * 1000 };
       return res.status(200).json(empty);
     }
 
@@ -133,7 +134,7 @@ export default async function handler(req, res) {
       bands, markets, examples,
       updated: new Date().toISOString(),
     };
-    cache = { at: Date.now(), data };
+    cache = { at: Date.now(), data, ttl: (data.empty ? EMPTY_MINUTES : CACHE_MINUTES) * 60 * 1000 };
     res.status(200).json(data);
   } catch (e) {
     res.status(500).json({ error: 'Could not build the track record.' });
