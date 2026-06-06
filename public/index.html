@@ -103,6 +103,36 @@
   .badge.W{background:rgba(61,220,132,.2);color:var(--good)}
   .badge.D{background:rgba(255,201,77,.2);color:var(--meh)}
   .badge.L{background:rgba(255,93,93,.2);color:var(--bad)}
+  /* ---- league dashboard ---- */
+  .dash{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-top:8px}
+  .dash h3{font-family:'Anton',sans-serif;text-transform:uppercase;font-size:18px;letter-spacing:.5px;margin-bottom:2px}
+  .dash .sub{font-size:12px;color:var(--muted);margin-bottom:14px}
+  .dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
+  .dash-col .h{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--pitch);margin-bottom:8px}
+  .dash-item{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line)}
+  .dash-item:last-child{border-bottom:none}
+  .dash-item .nm{font-weight:600}.dash-item .nm small{color:var(--muted);font-weight:400;margin-left:6px}
+  .dash-item .st{font-family:'Space Mono',monospace;color:var(--muted);white-space:nowrap}
+  /* ---- slip builder ---- */
+  .slip-add{all:unset;cursor:pointer;display:inline-block;margin-top:13px;font-family:'Space Mono',monospace;font-size:12px;
+    color:var(--text);border:1px solid var(--line);border-radius:7px;padding:6px 11px;transition:border-color .15s,background .15s}
+  .slip-add:hover{border-color:var(--pitch)}
+  .slip-add.on{background:rgba(182,255,61,.12);border-color:var(--pitch);color:var(--pitch)}
+  #slip{position:fixed;right:18px;bottom:18px;width:330px;max-width:calc(100vw - 36px);background:#0c1210;
+    border:1px solid var(--pitch);border-radius:var(--radius);padding:16px 18px;box-shadow:0 14px 40px rgba(0,0,0,.5);
+    z-index:20;display:none}
+  #slip .slip-head{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:15px;margin-bottom:10px}
+  #slip .slip-head button{all:unset;cursor:pointer;font-size:12px;color:var(--muted);font-family:'Space Mono',monospace}
+  #slip .slip-head button:hover{color:var(--bad)}
+  .slip-item{display:flex;align-items:center;gap:8px;font-size:13px;padding:7px 0;border-bottom:1px solid var(--line)}
+  .slip-item span:first-child{flex:1}.slip-item em{color:var(--muted);font-style:normal;font-size:11px;display:block}
+  .slip-pct{font-family:'Space Mono',monospace;color:var(--muted)}
+  .slip-x{all:unset;cursor:pointer;color:var(--muted);font-size:13px}.slip-x:hover{color:var(--bad)}
+  .slip-meter{display:flex;align-items:center;gap:10px;margin:12px 0 8px}
+  .slip-bar{flex:1;height:8px;background:var(--panel-2);border-radius:999px;overflow:hidden}
+  .slip-bar>div{height:100%;border-radius:999px;transition:width .4s}
+  .slip-combined{font-family:'Space Mono',monospace;font-weight:700;font-size:18px}
+  .slip-note{font-size:12px;color:var(--muted);line-height:1.5}
   footer{margin-top:40px;font-size:12px;color:var(--muted)}footer b{color:var(--text)}
 </style>
 </head>
@@ -113,6 +143,8 @@
     <p class="tagline">Plain-English reads on the football markets. Built to help you
       <b>avoid the daft bets</b> — not promise you riches.</p>
   </header>
+
+  <section class="dash" id="dash" style="display:none"></section>
 
   <div class="picker-label">Upcoming fixtures</div>
   <div class="fixtures" id="fixtures"></div>
@@ -125,6 +157,8 @@
     The odds tools teach how to compare; they don't promise winners. 18+ · Gamble responsibly · BeGambleAware.org
   </footer>
 </div>
+
+<div id="slip"></div>
 
 <script>
 /* ============================================================
@@ -244,9 +278,89 @@ function gamesToggle(tablesHtml) {
 }
 
 /* ============================================================
+   SLIP BUILDER + RISK METER  — educational: shows how stacking
+   selections multiplies the risk and shrinks your combined chance.
+   ============================================================ */
+const slip = [];
+function slipBtn(name, matchTag, pct) {
+  const id = `${matchTag}::${name}`;
+  return `<button class="slip-add" data-id="${id}" data-name="${name}" data-match="${matchTag}"
+    onclick="toggleSlip(this, ${pct})">+ add to slip</button>`;
+}
+window.toggleSlip = function (btn, pct) {
+  const id = btn.dataset.id;
+  const i = slip.findIndex(s => s.id === id);
+  if (i >= 0) slip.splice(i, 1);
+  else slip.push({ id, name: btn.dataset.name, match: btn.dataset.match, pct });
+  syncSlipButtons();
+  renderSlip();
+};
+window.removeSlip = function (id) {
+  const i = slip.findIndex(s => s.id === id);
+  if (i >= 0) slip.splice(i, 1);
+  syncSlipButtons();
+  renderSlip();
+};
+window.clearSlip = function () { slip.length = 0; syncSlipButtons(); renderSlip(); };
+// reflect membership on whatever buttons are currently on screen
+function syncSlipButtons() {
+  document.querySelectorAll('.slip-add').forEach(b => {
+    const inSlip = slip.some(s => s.id === b.dataset.id);
+    b.classList.toggle('on', inSlip);
+    b.textContent = inSlip ? '✓ in slip' : '+ add to slip';
+  });
+}
+function slipNote(n, combined) {
+  if (n === 1) return `One pick. Add more to watch how an accumulator's combined chance changes.`;
+  return `All ${n} have to land. Multiplying their recent-form rates gives roughly <b>${combined}%</b> — each extra leg drags it lower. That's the catch with accumulators: big payouts because they rarely come in. (Form rates aren't true odds, so treat this as illustrative.)`;
+}
+function renderSlip() {
+  const el = document.getElementById('slip');
+  if (!slip.length) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  const combined = Math.round(slip.reduce((a, s) => a * (s.pct / 100), 1) * 100);
+  const cls = combined >= 50 ? 'good' : combined >= 25 ? 'meh' : 'bad';
+  const items = slip.map(s => `<div class="slip-item">
+    <span>${s.name}<em>${s.match}</em></span>
+    <span class="slip-pct">${s.pct}%</span>
+    <button class="slip-x" onclick="removeSlip('${s.id.replace(/'/g, "\\'")}')">✕</button></div>`).join('');
+  el.innerHTML = `
+    <div class="slip-head"><span>My slip · ${slip.length} ${slip.length === 1 ? 'pick' : 'picks'}</span>
+      <button onclick="clearSlip()">clear</button></div>
+    <div class="slip-list">${items}</div>
+    <div class="slip-meter">
+      <div class="slip-bar"><div style="width:${combined}%;background:${colour(cls)}"></div></div>
+      <div class="slip-combined" style="color:${colour(cls)}">${combined}%</div></div>
+    <div class="slip-note">${slipNote(slip.length, combined)}</div>`;
+}
+
+/* ============================================================
+   LEAGUE DASHBOARD  — "Today's best angles" from /api/highlights
+   ============================================================ */
+async function loadHighlights() {
+  const dash = document.getElementById('dash');
+  try {
+    const r = await fetch('/api/highlights');
+    const d = await r.json();
+    if (!r.ok || d.empty || (!d.attacks.length && !d.defences.length)) return; // stay hidden if nothing yet
+    const col = (title, items) => items.length ? `<div class="dash-col"><div class="h">${title}</div>` +
+      items.map(t => `<div class="dash-item"><span class="nm">${t.name}<small>${t.league}</small></span>
+        <span class="st">${t.stat}</span></div>`).join('') + `</div>` : '';
+    dash.innerHTML = `<h3>Today's best angles</h3>
+      <div class="sub">Statistical extremes from current league standings — a starting point, not a tip.</div>
+      <div class="dash-grid">
+        ${col('Sharpest attacks', d.attacks)}
+        ${col('Leakiest defences', d.defences)}
+        ${col('Hottest form', d.form)}
+      </div>`;
+    dash.style.display = 'block';
+  } catch (e) { /* leave the dashboard hidden on failure */ }
+}
+
+/* ============================================================
    CARD BUILDERS
    ============================================================ */
-function teamCard(name, infoKey, games, test, up, down, yesWord, noWord, teamName) {
+function teamCard(name, infoKey, games, test, up, down, yesWord, noWord, teamName, matchTag) {
   const b = breakdown(games, test);
   const v = verdict(b.rate, up, down);
   return `<div class="market">
@@ -257,9 +371,10 @@ function teamCard(name, infoKey, games, test, up, down, yesWord, noWord, teamNam
       <span class="verdict-text">${v.text}</span></div>
     <div class="working">${workingLine(b, yesWord, noWord)}</div>
     ${oddsBox(b.rate)}
+    ${slipBtn(name, matchTag, b.rate)}
     ${gamesToggle(gamesTable(games, test, teamName))}</div>`;
 }
-function combinedCard(name, infoKey, hGames, aGames, test, up, down, hName, aName, unit) {
+function combinedCard(name, infoKey, hGames, aGames, test, up, down, hName, aName, unit, matchTag) {
   const p = pooled(hGames, aGames, test);
   const v = verdict(p.rate, up, down);
   const tables = gamesTable(hGames, test, hName) + gamesTable(aGames, test, aName);
@@ -271,6 +386,7 @@ function combinedCard(name, infoKey, hGames, aGames, test, up, down, hName, aNam
       <span class="verdict-text">${v.text}</span></div>
     <div class="working">Pooled from both: ${hName} <span class="y">${p.hH}</span>/${p.hN} · ${aName} <span class="y">${p.aH}</span>/${p.aN} ${unit}</div>
     ${oddsBox(p.rate)}
+    ${slipBtn(name, matchTag, p.rate)}
     ${gamesToggle(tables)}</div>`;
 }
 function compareCard(title, infoKey, hName, hGames, aName, aGames, test, lean, yesWord, noWord, note) {
@@ -345,6 +461,7 @@ async function showFixture(fx) {
 
 // draws everything from two teams' last-WINDOW result arrays
 function renderFixture(fx, home, away) {
+    const tag = `${fx.home} v ${fx.away}`;
     const hasHT = home.some(m => m.htGf != null) && away.some(m => m.htGf != null);
     const scoreTest = m => m.gf > 0;
     const cleanTest = m => m.ga === 0;
@@ -377,10 +494,10 @@ function renderFixture(fx, home, away) {
 
     /* ---- GOALS (pooled) ---- */
     const goals = [
-      combinedCard('Over 1.5 Goals', 'o15', home, away, m => m.gf + m.ga > 1.5, 'Plenty of 2+ goal games.', 'These have been tight.', fx.home, fx.away, 'over 1.5'),
-      combinedCard('Over 2.5 Goals', 'o25', home, away, m => m.gf + m.ga > 2.5, 'Lots of high-scoring games.', 'Recent games have been low-scoring.', fx.home, fx.away, 'over 2.5'),
-      combinedCard('Over 3.5 Goals', 'o35', home, away, m => m.gf + m.ga > 3.5, 'Genuine goal-fests lately.', 'Rarely this many goals.', fx.home, fx.away, 'over 3.5'),
-      combinedCard('Both Teams To Score', 'btts', home, away, m => m.gf > 0 && m.ga > 0, 'Both ends busy.', 'One side often kept quiet.', fx.home, fx.away, 'both scored'),
+      combinedCard('Over 1.5 Goals', 'o15', home, away, m => m.gf + m.ga > 1.5, 'Plenty of 2+ goal games.', 'These have been tight.', fx.home, fx.away, 'over 1.5', tag),
+      combinedCard('Over 2.5 Goals', 'o25', home, away, m => m.gf + m.ga > 2.5, 'Lots of high-scoring games.', 'Recent games have been low-scoring.', fx.home, fx.away, 'over 2.5', tag),
+      combinedCard('Over 3.5 Goals', 'o35', home, away, m => m.gf + m.ga > 3.5, 'Genuine goal-fests lately.', 'Rarely this many goals.', fx.home, fx.away, 'over 3.5', tag),
+      combinedCard('Both Teams To Score', 'btts', home, away, m => m.gf > 0 && m.ga > 0, 'Both ends busy.', 'One side often kept quiet.', fx.home, fx.away, 'both scored', tag),
     ];
 
     /* ---- MATCHUP ANGLE (attack vs defence narrative) ---- */
@@ -395,10 +512,10 @@ function renderFixture(fx, home, away) {
 
     /* ---- EACH TEAM ---- */
     const da = [
-      teamCard(`${fx.home} to score`,    'score', home, scoreTest, 'Reliable in front of goal lately.', 'Blunt going forward lately.', 'scored', 'blank', fx.home),
-      teamCard(`${fx.away} to score`,    'score', away, scoreTest, 'Reliable in front of goal lately.', 'Blunt going forward lately.', 'scored', 'blank', fx.away),
-      teamCard(`${fx.home} clean sheet`, 'clean', home, cleanTest, 'Solid at the back lately.',          'Leaky lately.',               'kept',   'conceded', fx.home),
-      teamCard(`${fx.away} clean sheet`, 'clean', away, cleanTest, 'Solid at the back lately.',          'Leaky lately.',               'kept',   'conceded', fx.away),
+      teamCard(`${fx.home} to score`,    'score', home, scoreTest, 'Reliable in front of goal lately.', 'Blunt going forward lately.', 'scored', 'blank', fx.home, tag),
+      teamCard(`${fx.away} to score`,    'score', away, scoreTest, 'Reliable in front of goal lately.', 'Blunt going forward lately.', 'scored', 'blank', fx.away, tag),
+      teamCard(`${fx.home} clean sheet`, 'clean', home, cleanTest, 'Solid at the back lately.',          'Leaky lately.',               'kept',   'conceded', fx.home, tag),
+      teamCard(`${fx.away} clean sheet`, 'clean', away, cleanTest, 'Solid at the back lately.',          'Leaky lately.',               'kept',   'conceded', fx.away, tag),
     ];
 
     const badges = g => form(g).map(r => `<span class="badge ${r}">${r}</span>`).join('');
@@ -416,6 +533,7 @@ function renderFixture(fx, home, away) {
       <div class="section-h">Goals</div>${goals.join('')}
       <div class="section-h">Each team</div>${angleHtml}${da.join('')}`;
     resultsEl.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    syncSlipButtons();
 }
 
 /* ============================================================
@@ -443,6 +561,7 @@ demoBtn.innerHTML = `<span class="fixture-teams">▶ See a demo match</span>
 demoBtn.onclick = showDemo;
 
 loadFixtures();
+loadHighlights();
 fixturesEl.parentNode.insertBefore(demoBtn, noteEl.nextSibling);
 </script>
 </body>
