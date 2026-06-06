@@ -55,6 +55,14 @@
   .pill.meh{background:rgba(255,201,77,.14);color:var(--meh)}
   .pill.bad{background:rgba(255,93,93,.14);color:var(--bad)}
   .verdict-text b{color:#fff}
+  .working{font-size:12.5px;color:var(--muted);margin-top:12px;padding-top:11px;border-top:1px solid var(--line);line-height:1.55}
+  .working .y{color:var(--good)}.working .n{color:var(--bad)}
+  .compare{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+  .compare .side{background:var(--panel-2);border-radius:10px;padding:12px 14px}
+  .compare .side .t{font-weight:600;font-size:14px;margin-bottom:2px}
+  .compare .side .p{font-family:'Space Mono',monospace;font-size:22px;font-weight:700}
+  .compare .side .w{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5}
+  .lead-note{font-size:12px;color:var(--muted);font-style:italic;margin-top:10px}
   .form-row{display:flex;gap:18px;flex-wrap:wrap;margin:18px 0 4px}
   .form-team{font-size:13px}.form-team .label{color:var(--muted);margin-right:8px}
   .badge{font-family:'Space Mono',monospace;font-weight:700;font-size:12px;display:inline-grid;place-items:center;
@@ -134,6 +142,52 @@ function marketCard(name, r, up, down) {
 }
 
 /* ============================================================
+   "SHOW THE WORKING" — every rate can list the games behind it.
+   breakdown() splits a team's games into hits/misses by opponent.
+   ============================================================ */
+function breakdown(games, test) {
+  const hits = [], misses = [];
+  games.forEach(m => (test(m) ? hits : misses).push(m.opponent || '—'));
+  return { rate: pct(hits.length, games.length), n: games.length, hits, misses };
+}
+// e.g. "Last 6: 4 yes (Newcastle, Arsenal, Brentford, Villa); 2 no (City, Spurs)"
+function workingLine(b, yesWord = 'yes', noWord = 'no') {
+  let s = `Last ${b.n}: <span class="y">${b.hits.length} ${yesWord}</span>`;
+  if (b.hits.length)   s += ` (${b.hits.join(', ')})`;
+  if (b.misses.length) s += `; <span class="n">${b.misses.length} ${noWord}</span> (${b.misses.join(', ')})`;
+  return s;
+}
+
+/* a team-specific card: headline %, verdict, and the games behind it */
+function teamCard(name, b, up, down, yesWord, noWord) {
+  const v = verdict(b.rate, up, down);
+  return `<div class="market">
+    <div class="market-top"><span class="market-name">${name}</span>
+      <span class="market-stat" style="color:${colour(v.level)}">${b.rate}%</span></div>
+    <div class="bar"><div style="width:${b.rate}%;background:${colour(v.level)}"></div></div>
+    <div class="verdict"><span class="pill ${v.level}">${v.label}</span>
+      <span class="verdict-text">${v.text}</span></div>
+    <div class="working">${workingLine(b, yesWord, noWord)}</div></div>`;
+}
+
+/* a head-to-head card comparing the two teams on the same question */
+function compareCard(title, hName, hB, aName, aB, lean, yesWord, noWord, note) {
+  const hi = hB.rate >= aB.rate;
+  return `<div class="market">
+    <div class="market-top"><span class="market-name">${title}</span></div>
+    <div class="compare">
+      <div class="side"><div class="t">${hName}</div>
+        <div class="p" style="color:${hi?'var(--good)':'var(--muted)'}">${hB.rate}%</div>
+        <div class="w">${workingLine(hB, yesWord, noWord)}</div></div>
+      <div class="side"><div class="t">${aName}</div>
+        <div class="p" style="color:${!hi?'var(--good)':'var(--muted)'}">${aB.rate}%</div>
+        <div class="w">${workingLine(aB, yesWord, noWord)}</div></div>
+    </div>
+    <div class="verdict" style="margin-top:14px"><span class="verdict-text">${lean}</span></div>
+    ${note ? `<div class="lead-note">${note}</div>` : ''}</div>`;
+}
+
+/* ============================================================
    DATA  — fetched live from the serverless functions
    ============================================================ */
 const fixturesEl = document.getElementById('fixtures');
@@ -187,40 +241,75 @@ async function showFixture(fx) {
 
 // draws the reads from two teams' result arrays (used by both live and demo)
 function renderFixture(fx, home, away) {
-    // venue-specific samples (fall back to overall if too few)
+    // venue-specific samples (home team's home games vs away team's away games)
     const hH = enough(homeGames(home)) ? homeGames(home) : home;
     const aA = enough(awayGames(away)) ? awayGames(away) : away;
+    const hasHT = home.some(m => m.htGf != null) && away.some(m => m.htGf != null);
 
-    /* ---- GOALS (combined match markets) ---- */
+    /* ---- WHO WINS? (each team on its own venue form) ---- */
+    const hWin = breakdown(hH, m => m.gf > m.ga);
+    const aWin = breakdown(aA, m => m.gf > m.ga);
+    let wLean;
+    if (hWin.rate - aWin.rate >= 20)
+      wLean = `<b>${fx.home}</b> have the stronger recent record here — the lean is towards a home win.`;
+    else if (aWin.rate - hWin.rate >= 20)
+      wLean = `<b>${fx.away}</b> have the better recent record — the lean is towards an away win.`;
+    else
+      wLean = `Too close to call on form — a draw or either side winning all look live. The draw is often the value when two teams are this even.`;
+    const whoWins = compareCard('Who wins?', fx.home, hWin, fx.away, aWin, wLean, 'won', 'didn\u2019t');
+
+    /* ---- WHO STRIKES FIRST? (honest half-time-lead proxy) ---- */
+    let firstGoal = '';
+    if (hasHT) {
+      const hLead = breakdown(hH.filter(m => m.htGf != null), m => m.htGf > m.htGa);
+      const aLead = breakdown(aA.filter(m => m.htGf != null), m => m.htGf > m.htGa);
+      let fLean;
+      if (hLead.rate - aLead.rate >= 20)      fLean = `<b>${fx.home}</b> tend to be in front early.`;
+      else if (aLead.rate - hLead.rate >= 20) fLean = `<b>${fx.away}</b> tend to strike first.`;
+      else                                    fLean = `Neither side reliably gets ahead early — a fast start from either is plausible.`;
+      firstGoal = compareCard('Who strikes first?', fx.home, hLead, fx.away, aLead, fLean, 'ahead', 'not',
+        'Shown as “ahead at half-time” — the free data has scores but not goal times, so this is a proxy for scoring first, not the exact first goal.');
+    }
+
+    /* ---- GOALS (combined match markets, with per-team counts) ---- */
+    const goalRow = (name, line, up, down) => {
+      const hb = breakdown(home, m => m.gf + m.ga > line);
+      const ab = breakdown(away, m => m.gf + m.ga > line);
+      const r = blend(hb.rate, ab.rate);
+      const v = verdict(r, up, down);
+      return `<div class="market">
+        <div class="market-top"><span class="market-name">${name}</span>
+          <span class="market-stat" style="color:${colour(v.level)}">${r}%</span></div>
+        <div class="bar"><div style="width:${r}%;background:${colour(v.level)}"></div></div>
+        <div class="verdict"><span class="pill ${v.level}">${v.label}</span>
+          <span class="verdict-text">${v.text}</span></div>
+        <div class="working">${fx.home}: <span class="y">${hb.hits.length}</span>/${hb.n} · ${fx.away}: <span class="y">${ab.hits.length}</span>/${ab.n} recent games over ${line}</div></div>`;
+    };
+    const bttsHb = breakdown(home, m => m.gf>0 && m.ga>0);
+    const bttsAb = breakdown(away, m => m.gf>0 && m.ga>0);
+    const bttsR  = blend(bttsHb.rate, bttsAb.rate);
+    const bttsV  = verdict(bttsR, 'Both ends busy.', 'One side often kept quiet.');
+    const bttsCard = `<div class="market">
+        <div class="market-top"><span class="market-name">Both Teams To Score</span>
+          <span class="market-stat" style="color:${colour(bttsV.level)}">${bttsR}%</span></div>
+        <div class="bar"><div style="width:${bttsR}%;background:${colour(bttsV.level)}"></div></div>
+        <div class="verdict"><span class="pill ${bttsV.level}">${bttsV.label}</span>
+          <span class="verdict-text">${bttsV.text}</span></div>
+        <div class="working">${fx.home}: <span class="y">${bttsHb.hits.length}</span>/${bttsHb.n} · ${fx.away}: <span class="y">${bttsAb.hits.length}</span>/${bttsAb.n} recent games both scored</div></div>`;
+
     const goals = [
-      marketCard('Over 1.5 Goals', blend(overRate(home,1.5), overRate(away,1.5)), 'Plenty of 2+ goal games.', 'These have been tight.'),
-      marketCard('Over 2.5 Goals', blend(overRate(home,2.5), overRate(away,2.5)), 'Lots of high-scoring games.', 'Recent games have been low-scoring.'),
-      marketCard('Over 3.5 Goals', blend(overRate(home,3.5), overRate(away,3.5)), 'Genuine goal-fests lately.', 'Rarely this many goals.'),
-      marketCard('Both Teams To Score', blend(bttsRate(home), bttsRate(away)), 'Both ends busy.', 'One side often kept quiet.'),
+      goalRow('Over 1.5 Goals', 1.5, 'Plenty of 2+ goal games.', 'These have been tight.'),
+      goalRow('Over 2.5 Goals', 2.5, 'Lots of high-scoring games.', 'Recent games have been low-scoring.'),
+      goalRow('Over 3.5 Goals', 3.5, 'Genuine goal-fests lately.', 'Rarely this many goals.'),
+      bttsCard,
     ];
-    const fhH = fhOverRate(home), fhA = fhOverRate(away);
-    if (fhH != null && fhA != null)
-      goals.push(marketCard('Goal in 1st Half', blend(fhH, fhA), 'First halves have been lively.', 'Slow starters, both of them.'));
 
-    /* ---- RESULT (uses home form vs away form) ---- */
-    const hw = winRate(hH), aw = winRate(aA);
-    let rLvl, rLabel, lean;
-    if (hw - aw >= 20)      { rLvl='good'; rLabel='Lean home'; lean=`${fx.home} look the stronger side on this form.`; }
-    else if (aw - hw >= 20) { rLvl='bad';  rLabel='Lean away'; lean=`${fx.away} have the better recent record here.`; }
-    else                    { rLvl='meh';  rLabel='Tight';     lean='Too close to call on form — a draw or either win all look live.'; }
-    const resultCard = `<div class="market">
-      <div class="market-top"><span class="market-name">Match Result</span>
-        <span class="pill ${rLvl}">${rLabel}</span></div>
-      <div class="verdict" style="margin-top:12px"><span class="verdict-text">
-        ${fx.home} win <b>${hw}%</b> of recent home games; ${fx.away} win <b>${aw}%</b> of recent away games. ${lean}
-      </span></div></div>`;
-
-    /* ---- DEFENCE & ATTACK (per team) ---- */
+    /* ---- EACH TEAM: to score / clean sheet (with the games behind it) ---- */
     const da = [
-      marketCard(`${fx.home} clean sheet`, cleanRate(hH), 'Solid at the back at home.', 'Leaky lately.'),
-      marketCard(`${fx.away} clean sheet`, cleanRate(aA), 'Solid at the back away.', 'Leaky on the road.'),
-      marketCard(`${fx.home} to score`,    scoreRate(hH), 'Reliable in front of goal at home.', 'Blunt going forward lately.'),
-      marketCard(`${fx.away} to score`,    scoreRate(aA), 'Reliable in front of goal away.', 'Blunt on their travels.'),
+      teamCard(`${fx.home} to score`,    breakdown(hH, m => m.gf > 0),  'Reliable in front of goal at home.', 'Blunt going forward lately.', 'scored', 'blank'),
+      teamCard(`${fx.away} to score`,    breakdown(aA, m => m.gf > 0),  'Reliable in front of goal away.',    'Blunt on their travels.',     'scored', 'blank'),
+      teamCard(`${fx.home} clean sheet`, breakdown(hH, m => m.ga === 0), 'Solid at the back at home.',         'Leaky lately.',               'kept', 'conceded'),
+      teamCard(`${fx.away} clean sheet`, breakdown(aA, m => m.ga === 0), 'Solid at the back away.',            'Leaky on the road.',          'kept', 'conceded'),
     ];
 
     const badges = g => form(g).map(r => `<span class="badge ${r}">${r}</span>`).join('');
@@ -228,14 +317,15 @@ function renderFixture(fx, home, away) {
     resultsEl.innerHTML = `
       <div class="matchup">${fx.home} <span class="at">vs</span> ${fx.away}</div>
       <p class="disclaimer">Based on each side's last 10 games (home/away form where there's enough data).
-        Descriptive, not a prediction — sanity-check, then compare against the odds.</p>
+        Every figure lists the games behind it. Descriptive, not a prediction — sanity-check, then compare against the odds.</p>
       <div class="form-row">
         <div class="form-team"><span class="label">${fx.home} form</span>${badges(home)}</div>
         <div class="form-team"><span class="label">${fx.away} form</span>${badges(away)}</div>
       </div>
+      <div class="section-h">Result</div>${whoWins}
+      ${firstGoal ? `<div class="section-h">First goal</div>${firstGoal}` : ''}
       <div class="section-h">Goals</div>${goals.join('')}
-      <div class="section-h">Result</div>${resultCard}
-      <div class="section-h">Defence &amp; attack</div>${da.join('')}`;
+      <div class="section-h">Each team</div>${da.join('')}`;
     resultsEl.scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
 
@@ -245,10 +335,12 @@ function renderFixture(fx, home, away) {
    ============================================================ */
 const DEMO = {
   fx: { home:'Demo United', away:'Sample City', league:'Demo' },
-  home: [ {gf:3,ga:1,venue:'H',htGf:1,htGa:0},{gf:2,ga:2,venue:'A',htGf:1,htGa:1},{gf:1,ga:0,venue:'H',htGf:0,htGa:0},
-          {gf:4,ga:1,venue:'H',htGf:2,htGa:0},{gf:0,ga:1,venue:'A',htGf:0,htGa:1},{gf:2,ga:0,venue:'H',htGf:1,htGa:0} ],
-  away: [ {gf:1,ga:1,venue:'A',htGf:0,htGa:1},{gf:0,ga:2,venue:'H',htGf:0,htGa:1},{gf:2,ga:3,venue:'A',htGf:1,htGa:2},
-          {gf:1,ga:1,venue:'H',htGf:1,htGa:0},{gf:0,ga:0,venue:'A',htGf:0,htGa:0},{gf:1,ga:2,venue:'A',htGf:0,htGa:1} ],
+  home: [ {gf:3,ga:1,venue:'H',htGf:1,htGa:0,opponent:'Newcastle'},{gf:2,ga:2,venue:'A',htGf:1,htGa:1,opponent:'Arsenal'},
+          {gf:1,ga:0,venue:'H',htGf:0,htGa:0,opponent:'Brentford'},{gf:4,ga:1,venue:'H',htGf:2,htGa:0,opponent:'Villa'},
+          {gf:0,ga:1,venue:'A',htGf:0,htGa:1,opponent:'Man City'},{gf:2,ga:0,venue:'H',htGf:1,htGa:0,opponent:'Everton'} ],
+  away: [ {gf:1,ga:1,venue:'A',htGf:0,htGa:1,opponent:'Chelsea'},{gf:0,ga:2,venue:'H',htGf:0,htGa:1,opponent:'Liverpool'},
+          {gf:2,ga:3,venue:'A',htGf:1,htGa:2,opponent:'Spurs'},{gf:1,ga:1,venue:'H',htGf:1,htGa:0,opponent:'Fulham'},
+          {gf:0,ga:0,venue:'A',htGf:0,htGa:0,opponent:'Wolves'},{gf:1,ga:2,venue:'A',htGf:0,htGa:1,opponent:'Brighton'} ],
 };
 function showDemo() {
   document.querySelectorAll('.fixture-btn').forEach(b => b.classList.remove('active'));
