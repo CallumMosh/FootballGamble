@@ -172,7 +172,12 @@ async function showFixture(fx) {
     ]);
     const home = hRes.results || [];
     const away = aRes.results || [];
-    if (!home.length || !away.length) throw new Error('Not enough recent results for one of these teams.');
+    if (!home.length || !away.length) {
+      const wc = /world cup/i.test(fx.league);
+      throw new Error(wc
+        ? 'No recent form data yet — World Cup reads fill in once the group games kick off (11 June).'
+        : 'Not enough recent results for one of these teams.');
+    }
 
     // venue-specific samples (fall back to overall if too few)
     const hH = enough(homeGames(home)) ? homeGames(home) : home;
@@ -233,3 +238,4 @@ loadFixtures();
 </script>
 </body>
 </html>
+
