@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Punterly — bet smarter, not harder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0e0c; --panel:#121714; --panel-2:#1a221d; --line:#28332b;
+    --text:#eef2ee; --muted:#8a9990; --pitch:#b6ff3d;
+    --good:#3ddc84; --meh:#ffc94d; --bad:#ff5d5d; --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:radial-gradient(900px 500px at 80% -10%,rgba(182,255,61,.07),transparent 60%),var(--bg);
+    background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.012) 0 60px,transparent 60px 120px);
+    color:var(--text);font-family:'Archivo',system-ui,sans-serif;line-height:1.5;min-height:100vh;
+  }
+  .app{max-width:880px;margin:0 auto;padding:32px 20px 80px}
+  .brand{font-family:'Anton',sans-serif;font-size:clamp(38px,8vw,64px);letter-spacing:1px;line-height:.9;text-transform:uppercase}
+  .brand span{color:var(--pitch)}
+  .tagline{color:var(--muted);font-size:15px;margin-top:8px;max-width:46ch}.tagline b{color:var(--text)}
+  .picker-label,.section-h{font-size:12px;text-transform:uppercase;letter-spacing:2px;color:var(--muted)}
+  .picker-label{margin:28px 0 10px}
+  .section-h{margin:26px 0 12px;display:flex;align-items:center;gap:12px}
+  .section-h::after{content:"";flex:1;height:1px;background:var(--line)}
+  .fixtures{display:grid;gap:10px}
+  .fixture-btn{all:unset;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:14px;
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 18px;
+    transition:border-color .15s,transform .15s,background .15s}
+  .fixture-btn:hover{border-color:var(--pitch);transform:translateY(-1px)}
+  .fixture-btn.active{border-color:var(--pitch);background:var(--panel-2)}
+  .fixture-teams{font-weight:600;font-size:16px}
+  .fixture-teams .vs{color:var(--muted);font-weight:400;margin:0 8px}
+  .fixture-league{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);
+    border:1px solid var(--line);border-radius:999px;padding:3px 10px;white-space:nowrap}
+  .note{color:var(--muted);font-size:13px;padding:14px 0}
+  .results{margin-top:36px}.results.hidden{display:none}
+  .matchup{font-family:'Anton',sans-serif;text-transform:uppercase;font-size:clamp(22px,5vw,34px);margin-bottom:4px}
+  .matchup .at{color:var(--pitch)}
+  .disclaimer{font-size:13px;color:var(--muted);border-left:2px solid var(--line);padding-left:12px;margin:14px 0 4px}
+  .market{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-bottom:14px}
+  .market-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+  .market-name{font-weight:700;font-size:17px}
+  .market-stat{font-family:'Space Mono',monospace;font-size:26px;font-weight:700}
+  .bar{height:7px;background:var(--panel-2);border-radius:999px;margin:14px 0 12px;overflow:hidden}
+  .bar>div{height:100%;border-radius:999px;transition:width .5s ease}
+  .verdict{display:flex;align-items:flex-start;gap:10px;font-size:14px}
+  .pill{font-family:'Space Mono',monospace;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;
+    padding:4px 9px;border-radius:6px;white-space:nowrap;flex-shrink:0}
+  .pill.good{background:rgba(61,220,132,.14);color:var(--good)}
+  .pill.meh{background:rgba(255,201,77,.14);color:var(--meh)}
+  .pill.bad{background:rgba(255,93,93,.14);color:var(--bad)}
+  .verdict-text b{color:#fff}
+  .form-row{display:flex;gap:18px;flex-wrap:wrap;margin:18px 0 4px}
+  .form-team{font-size:13px}.form-team .label{color:var(--muted);margin-right:8px}
+  .badge{font-family:'Space Mono',monospace;font-weight:700;font-size:12px;display:inline-grid;place-items:center;
+    width:22px;height:22px;border-radius:5px;margin-right:3px}
+  .badge.W{background:rgba(61,220,132,.2);color:var(--good)}
+  .badge.D{background:rgba(255,201,77,.2);color:var(--meh)}
+  .badge.L{background:rgba(255,93,93,.2);color:var(--bad)}
+  footer{margin-top:40px;font-size:12px;color:var(--muted)}footer b{color:var(--text)}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">PUNT<span>ERLY</span></div>
+    <p class="tagline">Plain-English reads on the football markets. Built to help you
+      <b>avoid the daft bets</b> — not promise you riches.</p>
+  </header>
+
+  <div class="picker-label">Upcoming fixtures</div>
+  <div class="fixtures" id="fixtures"></div>
+  <div class="note" id="note">Loading fixtures…</div>
+
+  <section class="results hidden" id="results"></section>
+
+  <footer>
+    Reads are based on <b>recent form only</b> — descriptive, not a prediction model.
+    Real value comes from comparing these to the bookmaker's odds (a later feature).
+    18+ · Always gamble responsibly · BeGambleAware.org
+  </footer>
+</div>
+
+<script>
+/* ============================================================
+   STATS HELPERS  — everything here is derived from goals only
+   ============================================================ */
+const pct  = (n, t) => t ? Math.round((n / t) * 100) : 0;
+const rate = (g, test) => pct(g.filter(test).length, g.length);
+
+const overRate  = (g, line) => rate(g, m => m.gf + m.ga > line);
+const bttsRate  = g => rate(g, m => m.gf > 0 && m.ga > 0);
+const scoreRate = g => rate(g, m => m.gf > 0);
+const cleanRate = g => rate(g, m => m.ga === 0);
+const winRate   = g => rate(g, m => m.gf > m.ga);
+const fhOverRate= g => { const v = g.filter(m => m.htGf != null);
+                         return v.length ? pct(v.filter(m => m.htGf + m.htGa > 0).length, v.length) : null; };
+
+const form  = g => g.slice(0, 5).map(m => m.gf > m.ga ? 'W' : m.gf < m.ga ? 'L' : 'D');
+const blend = (a, b) => Math.round((a + b) / 2);
+const homeGames = g => g.filter(m => m.venue === 'H');
+const awayGames = g => g.filter(m => m.venue === 'A');
+const enough = a => a.length >= 3;          // use venue split only if we have 3+
+const colour = lvl => lvl==='good'?'var(--good)':lvl==='meh'?'var(--meh)':'var(--bad)';
+
+/* ============================================================
+   VERDICT ENGINE  — the brain. Edit thresholds / wording here.
+   up   = phrase shown when the rate is high
+   down = phrase shown when the rate is low
+   ============================================================ */
+function verdict(rate, up, down) {
+  if (rate >= 65) return { level:'good', label:'Leans yes',
+    text:`Landed in <b>${rate}%</b> of recent games. ${up} Worth a look — just check the odds aren't already short.` };
+  if (rate >= 45) return { level:'meh', label:'Coin-flip',
+    text:`Mixed at <b>${rate}%</b> — no clear edge. This is where the bookie usually wins, so lean cautious.` };
+  return { level:'bad', label:'Avoid',
+    text:`Only <b>${rate}%</b> recently. ${down} Looks like poor value on form alone.` };
+}
+
+/* draws one standard market card */
+function marketCard(name, r, up, down) {
+  const v = verdict(r, up, down);
+  return `<div class="market">
+    <div class="market-top"><span class="market-name">${name}</span>
+      <span class="market-stat" style="color:${colour(v.level)}">${r}%</span></div>
+    <div class="bar"><div style="width:${r}%;background:${colour(v.level)}"></div></div>
+    <div class="verdict"><span class="pill ${v.level}">${v.label}</span>
+      <span class="verdict-text">${v.text}</span></div></div>`;
+}
+
+/* ============================================================
+   DATA  — fetched live from the serverless functions
+   ============================================================ */
+const fixturesEl = document.getElementById('fixtures');
+const resultsEl  = document.getElementById('results');
+const noteEl     = document.getElementById('note');
+
+async function loadFixtures() {
+  try {
+    const r = await fetch('/api/fixtures');
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Failed to load');
+    if (!data.length) { noteEl.textContent = 'No upcoming fixtures in the next 10 days.'; return; }
+    noteEl.style.display = 'none';
+    data.forEach(fx => {
+      const btn = document.createElement('button');
+      btn.className = 'fixture-btn';
+      btn.innerHTML = `<span class="fixture-teams">${fx.home}<span class="vs">v</span>${fx.away}</span>
+                       <span class="fixture-league">${fx.league}</span>`;
+      btn.onclick = () => {
+        document.querySelectorAll('.fixture-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        showFixture(fx);
+      };
+      fixturesEl.appendChild(btn);
+    });
+  } catch (e) { noteEl.textContent = `Couldn't load fixtures: ${e.message}`; }
+}
+
+async function showFixture(fx) {
+  resultsEl.classList.remove('hidden');
+  resultsEl.innerHTML = `<p class="note">Crunching recent form…</p>`;
+  try {
+    const [hRes, aRes] = await Promise.all([
+      fetch(`/api/team?id=${fx.homeId}`).then(r => r.json()),
+      fetch(`/api/team?id=${fx.awayId}`).then(r => r.json()),
+    ]);
+    const home = hRes.results || [];
+    const away = aRes.results || [];
+    if (!home.length || !away.length) throw new Error('Not enough recent results for one of these teams.');
+
+    // venue-specific samples (fall back to overall if too few)
+    const hH = enough(homeGames(home)) ? homeGames(home) : home;
+    const aA = enough(awayGames(away)) ? awayGames(away) : away;
+
+    /* ---- GOALS (combined match markets) ---- */
+    const goals = [
+      marketCard('Over 1.5 Goals', blend(overRate(home,1.5), overRate(away,1.5)), 'Plenty of 2+ goal games.', 'These have been tight.'),
+      marketCard('Over 2.5 Goals', blend(overRate(home,2.5), overRate(away,2.5)), 'Lots of high-scoring games.', 'Recent games have been low-scoring.'),
+      marketCard('Over 3.5 Goals', blend(overRate(home,3.5), overRate(away,3.5)), 'Genuine goal-fests lately.', 'Rarely this many goals.'),
+      marketCard('Both Teams To Score', blend(bttsRate(home), bttsRate(away)), 'Both ends busy.', 'One side often kept quiet.'),
+    ];
+    const fhH = fhOverRate(home), fhA = fhOverRate(away);
+    if (fhH != null && fhA != null)
+      goals.push(marketCard('Goal in 1st Half', blend(fhH, fhA), 'First halves have been lively.', 'Slow starters, both of them.'));
+
+    /* ---- RESULT (uses home form vs away form) ---- */
+    const hw = winRate(hH), aw = winRate(aA);
+    let rLvl, rLabel, lean;
+    if (hw - aw >= 20)      { rLvl='good'; rLabel='Lean home'; lean=`${fx.home} look the stronger side on this form.`; }
+    else if (aw - hw >= 20) { rLvl='bad';  rLabel='Lean away'; lean=`${fx.away} have the better recent record here.`; }
+    else                    { rLvl='meh';  rLabel='Tight';     lean='Too close to call on form — a draw or either win all look live.'; }
+    const resultCard = `<div class="market">
+      <div class="market-top"><span class="market-name">Match Result</span>
+        <span class="pill ${rLvl}">${rLabel}</span></div>
+      <div class="verdict" style="margin-top:12px"><span class="verdict-text">
+        ${fx.home} win <b>${hw}%</b> of recent home games; ${fx.away} win <b>${aw}%</b> of recent away games. ${lean}
+      </span></div></div>`;
+
+    /* ---- DEFENCE & ATTACK (per team) ---- */
+    const da = [
+      marketCard(`${fx.home} clean sheet`, cleanRate(hH), 'Solid at the back at home.', 'Leaky lately.'),
+      marketCard(`${fx.away} clean sheet`, cleanRate(aA), 'Solid at the back away.', 'Leaky on the road.'),
+      marketCard(`${fx.home} to score`,    scoreRate(hH), 'Reliable in front of goal at home.', 'Blunt going forward lately.'),
+      marketCard(`${fx.away} to score`,    scoreRate(aA), 'Reliable in front of goal away.', 'Blunt on their travels.'),
+    ];
+
+    const badges = g => form(g).map(r => `<span class="badge ${r}">${r}</span>`).join('');
+
+    resultsEl.innerHTML = `
+      <div class="matchup">${fx.home} <span class="at">vs</span> ${fx.away}</div>
+      <p class="disclaimer">Based on each side's last 10 games (home/away form where there's enough data).
+        Descriptive, not a prediction — sanity-check, then compare against the odds.</p>
+      <div class="form-row">
+        <div class="form-team"><span class="label">${fx.home} form</span>${badges(home)}</div>
+        <div class="form-team"><span class="label">${fx.away} form</span>${badges(away)}</div>
+      </div>
+      <div class="section-h">Goals</div>${goals.join('')}
+      <div class="section-h">Result</div>${resultCard}
+      <div class="section-h">Defence &amp; attack</div>${da.join('')}`;
+    resultsEl.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  } catch (e) {
+    resultsEl.innerHTML = `<p class="note">Couldn't load that one: ${e.message}</p>`;
+  }
+}
+
+loadFixtures();
+</script>
+</body>
+</html>

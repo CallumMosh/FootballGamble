@@ -1,0 +1,7 @@
+{
+  "name": "punterly",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Plain-English football betting sanity-check tool"
+}
