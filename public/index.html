@@ -63,19 +63,39 @@
   .compare .side .p{font-family:'Space Mono',monospace;font-size:22px;font-weight:700}
   .compare .side .w{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5}
   .lead-note{font-size:12px;color:var(--muted);font-style:italic;margin-top:10px}
+  .angle{background:rgba(182,255,61,.06);border:1px solid var(--line);border-left:3px solid var(--pitch);
+    border-radius:10px;padding:13px 15px;font-size:14px;margin-bottom:14px;line-height:1.5}
+  .angle b{color:#fff}
   .games-toggle{all:unset;cursor:pointer;display:inline-block;margin-top:12px;font-family:'Space Mono',monospace;
     font-size:12px;color:var(--pitch);border:1px solid var(--line);border-radius:7px;padding:5px 10px}
   .games-toggle:hover{border-color:var(--pitch)}
   .games-wrap{margin-top:12px}
-  .games-cap{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:10px 0 5px}
   table.games{width:100%;border-collapse:collapse;font-size:13px}
   table.games th{text-align:left;font-weight:600;color:var(--muted);font-size:11px;text-transform:uppercase;
     letter-spacing:.5px;padding:6px 8px;border-bottom:1px solid var(--line)}
   table.games td{padding:7px 8px;border-bottom:1px solid var(--line);font-family:'Space Mono',monospace}
-  table.games td.opp{font-family:'Archivo',sans-serif}
+  table.games td.match{font-family:'Archivo',sans-serif}
+  table.games td.match b{color:#fff}
   table.games tr:last-child td{border-bottom:none}
   table.games .y{color:var(--good);font-weight:700}
   table.games .n{color:var(--bad);font-weight:700}
+  .odds{margin-top:13px;padding-top:12px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;align-items:center;gap:9px}
+  .odds label{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:8px}
+  .odds input{width:92px;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;color:var(--text);
+    font-family:'Space Mono',monospace;font-size:13px;padding:6px 9px}
+  .odds input:focus{outline:none;border-color:var(--pitch)}
+  .odds-out{font-size:12.5px;line-height:1.55;flex-basis:100%}
+  .odds-out.good{color:var(--good)}.odds-out.bad{color:var(--bad)}.odds-out.meh{color:var(--meh)}
+  .odds-out b{color:#fff}
+  .info{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;border:1px solid var(--line);
+    color:var(--muted);font-size:10px;font-style:italic;cursor:help;position:relative;margin-left:7px;
+    vertical-align:middle;font-family:'Space Mono',monospace}
+  .info:hover,.info:focus{border-color:var(--pitch);color:var(--pitch);outline:none}
+  .info::after{content:attr(data-tip);position:absolute;bottom:140%;left:0;width:215px;background:#05080699;
+    backdrop-filter:blur(4px);background:#050806;border:1px solid var(--line);border-radius:8px;padding:9px 11px;
+    font-size:12px;font-style:normal;font-weight:400;color:var(--text);line-height:1.45;text-align:left;
+    opacity:0;visibility:hidden;transition:opacity .15s;z-index:5;pointer-events:none}
+  .info:hover::after,.info:focus::after{opacity:1;visibility:visible}
   .form-row{display:flex;gap:18px;flex-wrap:wrap;margin:18px 0 4px}
   .form-team{font-size:13px}.form-team .label{color:var(--muted);margin-right:8px}
   .badge{font-family:'Space Mono',monospace;font-weight:700;font-size:12px;display:inline-grid;place-items:center;
@@ -101,38 +121,55 @@
   <section class="results hidden" id="results"></section>
 
   <footer>
-    Reads are based on <b>recent form only</b> — descriptive, not a prediction model.
-    Real value comes from comparing these to the bookmaker's odds (a later feature).
-    18+ · Always gamble responsibly · BeGambleAware.org
+    Reads are based on <b>the last 6 games</b> only — descriptive, not a prediction model.
+    The odds tools teach how to compare; they don't promise winners. 18+ · Gamble responsibly · BeGambleAware.org
   </footer>
 </div>
 
 <script>
 /* ============================================================
-   STATS HELPERS  — everything here is derived from goals only
+   SETTINGS + HELPERS
    ============================================================ */
-const pct  = (n, t) => t ? Math.round((n / t) * 100) : 0;
-const rate = (g, test) => pct(g.filter(test).length, g.length);
-
-const overRate  = (g, line) => rate(g, m => m.gf + m.ga > line);
-const bttsRate  = g => rate(g, m => m.gf > 0 && m.ga > 0);
-const scoreRate = g => rate(g, m => m.gf > 0);
-const cleanRate = g => rate(g, m => m.ga === 0);
-const winRate   = g => rate(g, m => m.gf > m.ga);
-const fhOverRate= g => { const v = g.filter(m => m.htGf != null);
-                         return v.length ? pct(v.filter(m => m.htGf + m.htGa > 0).length, v.length) : null; };
-
-const form  = g => g.slice(0, 5).map(m => m.gf > m.ga ? 'W' : m.gf < m.ga ? 'L' : 'D');
+const WINDOW = 6;                 // one sample size, used everywhere
+const pct = (n, t) => t ? Math.round((n / t) * 100) : 0;
 const blend = (a, b) => Math.round((a + b) / 2);
-const homeGames = g => g.filter(m => m.venue === 'H');
-const awayGames = g => g.filter(m => m.venue === 'A');
-const enough = a => a.length >= 3;          // use venue split only if we have 3+
 const colour = lvl => lvl==='good'?'var(--good)':lvl==='meh'?'var(--meh)':'var(--bad)';
+const form = g => g.slice(0, 5).map(m => m.gf > m.ga ? 'W' : m.gf < m.ga ? 'L' : 'D');
+
+// plain-English definitions for the (i) tooltips
+const GLOSS = {
+  win:  "Who wins: the share of recent games each side actually won. A draw or a loss both count as a no.",
+  half: "Ahead at half-time: how often the team was in front at the half-time whistle. A proxy only — the free data has scores but not goal times.",
+  o15:  "Over 1.5 Goals: the match finishes with 2 or more goals in total (both teams added together).",
+  o25:  "Over 2.5 Goals: the match finishes with 3 or more goals in total.",
+  o35:  "Over 3.5 Goals: the match finishes with 4 or more goals in total.",
+  btts: "Both Teams To Score: both teams find the net at least once in the same match.",
+  score:"To Score: the team scores at least one goal in the match.",
+  clean:"Clean Sheet: the team concedes zero goals — keeps the opponent scoreless.",
+};
+const infoIcon = key => GLOSS[key] ? `<span class="info" tabindex="0" data-tip="${GLOSS[key]}">i</span>` : '';
+
+/* split a team's games into hits/misses by opponent */
+function breakdown(games, test) {
+  const hits = [], misses = [];
+  games.forEach(m => (test(m) ? hits : misses).push(m.opponent || '—'));
+  return { rate: pct(hits.length, games.length), n: games.length, hits, misses };
+}
+function workingLine(b, yesWord = 'yes', noWord = 'no') {
+  let s = `Last ${b.n}: <span class="y">${b.hits.length} ${yesWord}</span>`;
+  if (b.hits.length)   s += ` (${b.hits.join(', ')})`;
+  if (b.misses.length) s += `; <span class="n">${b.misses.length} ${noWord}</span> (${b.misses.join(', ')})`;
+  return s;
+}
+/* POOLED rate for combined markets: total hits over total games (not an average) */
+function pooled(hGames, aGames, test) {
+  const hH = hGames.filter(test).length, aH = aGames.filter(test).length;
+  return { rate: pct(hH + aH, hGames.length + aGames.length),
+           hH, hN: hGames.length, aH, aN: aGames.length };
+}
 
 /* ============================================================
-   VERDICT ENGINE  — the brain. Edit thresholds / wording here.
-   up   = phrase shown when the rate is high
-   down = phrase shown when the rate is low
+   VERDICT ENGINE — edit thresholds / wording here
    ============================================================ */
 function verdict(rate, up, down) {
   if (rate >= 65) return { level:'good', label:'Leans yes',
@@ -143,84 +180,105 @@ function verdict(rate, up, down) {
     text:`Only <b>${rate}%</b> recently. ${down} Looks like poor value on form alone.` };
 }
 
-/* draws one standard market card */
-function marketCard(name, r, up, down) {
-  const v = verdict(r, up, down);
-  return `<div class="market">
-    <div class="market-top"><span class="market-name">${name}</span>
-      <span class="market-stat" style="color:${colour(v.level)}">${r}%</span></div>
-    <div class="bar"><div style="width:${r}%;background:${colour(v.level)}"></div></div>
-    <div class="verdict"><span class="pill ${v.level}">${v.label}</span>
-      <span class="verdict-text">${v.text}</span></div></div>`;
+/* ============================================================
+   IMPLIED-PROBABILITY TOOL  — teaches odds vs form, honestly.
+   No "value detected" hype: a form % is not a true probability.
+   ============================================================ */
+let _oid = 0;
+function oddsBox(formPct) {
+  const id = 'odds' + (++_oid);
+  return `<div class="odds">
+    <label>Bookmaker's decimal odds
+      <input type="number" step="0.01" min="1.01" placeholder="e.g. 2.50"
+        oninput="checkOdds(this, ${formPct}, '${id}')"></label>
+    <div class="odds-out" id="${id}"></div></div>`;
 }
+window.checkOdds = function (inp, formPct, outId) {
+  const out = document.getElementById(outId);
+  const odds = parseFloat(inp.value);
+  if (!odds || odds < 1.01) { out.innerHTML = ''; out.className = 'odds-out'; return; }
+  const implied = Math.round(100 / odds);
+  const diff = formPct - implied;
+  let cls, msg;
+  if (diff >= 10) { cls = 'good';
+    msg = `Form read <b>${formPct}%</b> vs odds-implied <b>${implied}%</b>. Form sits higher — that <i>can</i> hint at value, but recent form isn't a true probability and the bookie prices in much more. A prompt to dig deeper, not a green light.`; }
+  else if (diff <= -10) { cls = 'bad';
+    msg = `Odds imply <b>${implied}%</b> vs your form read <b>${formPct}%</b>. The price looks short for what recent form suggests — poor value on form alone.`; }
+  else { cls = 'meh';
+    msg = `Form <b>${formPct}%</b> vs odds-implied <b>${implied}%</b> — roughly in line, so no obvious edge either way.`; }
+  out.className = 'odds-out ' + cls;
+  out.innerHTML = msg;
+};
 
 /* ============================================================
-   "SHOW THE WORKING" — every rate can list the games behind it.
-   breakdown() splits a team's games into hits/misses by opponent.
+   GAMES TABLE — universal Home–Away scoreline, your team in bold
    ============================================================ */
-function breakdown(games, test) {
-  const hits = [], misses = [];
-  games.forEach(m => (test(m) ? hits : misses).push(m.opponent || '—'));
-  return { rate: pct(hits.length, games.length), n: games.length, hits, misses };
-}
-// e.g. "Last 6: 4 yes (Newcastle, Arsenal, Brentford, Villa); 2 no (City, Spurs)"
-function workingLine(b, yesWord = 'yes', noWord = 'no') {
-  let s = `Last ${b.n}: <span class="y">${b.hits.length} ${yesWord}</span>`;
-  if (b.hits.length)   s += ` (${b.hits.join(', ')})`;
-  if (b.misses.length) s += `; <span class="n">${b.misses.length} ${noWord}</span> (${b.misses.join(', ')})`;
-  return s;
-}
-
-/* builds the drop-down table of a team's games, with a tick/cross per game */
-function gamesTable(games, test, teamName) {
-  const rows = games.map(m => {
-    const hit = test(m);
-    const ht = m.htGf == null ? '–' : `${m.htGf}\u2013${m.htGa}`;
-    return `<tr>
-      <td class="opp">${m.opponent || '—'}</td>
-      <td>${m.venue}</td>
-      <td>${ht}</td>
-      <td>${m.gf}\u2013${m.ga}</td>
-      <td class="${hit ? 'y' : 'n'}">${hit ? '✓' : '✗'}</td></tr>`;
-  }).join('');
-  return `<div class="games-cap">${teamName} — last ${games.length} (scores as ${teamName}'s–opponent's)</div>
-    <table class="games"><thead><tr><th>Opponent</th><th>H/A</th><th>HT</th><th>FT</th><th></th></tr></thead>
-    <tbody>${rows}</tbody></table>`;
-}
-// the little "show the games" button + hidden table block
-function gamesToggle(tablesHtml) {
-  return `<button class="games-toggle" onclick="toggleGames(this)">▾ show the games</button>
-    <div class="games-wrap" style="display:none">${tablesHtml}</div>`;
-}
-// expands / collapses the table under a card (global so inline onclick can reach it)
 window.toggleGames = function (btn) {
   const w = btn.nextElementSibling;
   const open = w.style.display === 'block';
   w.style.display = open ? 'none' : 'block';
   btn.textContent = open ? '▾ show the games' : '▴ hide the games';
 };
+function gamesTable(games, test, teamName) {
+  const rows = games.map(m => {
+    const hit = test(m);
+    const homeSide = m.venue === 'H';
+    // rebuild the true scoreline in home–away order
+    const ftH = homeSide ? m.gf : m.ga, ftA = homeSide ? m.ga : m.gf;
+    const htShown = m.htGf == null ? '–'
+      : `${homeSide ? m.htGf : m.htGa}\u2013${homeSide ? m.htGa : m.htGf}`;
+    const left  = homeSide ? `<b>${teamName}</b>` : (m.opponent || '—');
+    const right = homeSide ? (m.opponent || '—') : `<b>${teamName}</b>`;
+    return `<tr>
+      <td class="match">${left} ${ftH}\u2013${ftA} ${right}</td>
+      <td>${htShown}</td>
+      <td class="${hit ? 'y' : 'n'}">${hit ? '✓' : '✗'}</td></tr>`;
+  }).join('');
+  return `<table class="games">
+    <thead><tr><th>Match (full-time)</th><th>HT</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+}
+function gamesToggle(tablesHtml) {
+  return `<button class="games-toggle" onclick="toggleGames(this)">▾ show the games</button>
+    <div class="games-wrap" style="display:none">${tablesHtml}</div>`;
+}
 
-/* a team-specific card: headline %, verdict, the working, and a games table */
-function teamCard(name, games, test, up, down, yesWord, noWord, teamName) {
+/* ============================================================
+   CARD BUILDERS
+   ============================================================ */
+function teamCard(name, infoKey, games, test, up, down, yesWord, noWord, teamName) {
   const b = breakdown(games, test);
   const v = verdict(b.rate, up, down);
   return `<div class="market">
-    <div class="market-top"><span class="market-name">${name}</span>
+    <div class="market-top"><span class="market-name">${name}${infoIcon(infoKey)}</span>
       <span class="market-stat" style="color:${colour(v.level)}">${b.rate}%</span></div>
     <div class="bar"><div style="width:${b.rate}%;background:${colour(v.level)}"></div></div>
     <div class="verdict"><span class="pill ${v.level}">${v.label}</span>
       <span class="verdict-text">${v.text}</span></div>
     <div class="working">${workingLine(b, yesWord, noWord)}</div>
+    ${oddsBox(b.rate)}
     ${gamesToggle(gamesTable(games, test, teamName))}</div>`;
 }
-
-/* a head-to-head card comparing the two teams on the same question */
-function compareCard(title, hName, hGames, aName, aGames, test, lean, yesWord, noWord, note) {
+function combinedCard(name, infoKey, hGames, aGames, test, up, down, hName, aName, unit) {
+  const p = pooled(hGames, aGames, test);
+  const v = verdict(p.rate, up, down);
+  const tables = gamesTable(hGames, test, hName) + gamesTable(aGames, test, aName);
+  return `<div class="market">
+    <div class="market-top"><span class="market-name">${name}${infoIcon(infoKey)}</span>
+      <span class="market-stat" style="color:${colour(v.level)}">${p.rate}%</span></div>
+    <div class="bar"><div style="width:${p.rate}%;background:${colour(v.level)}"></div></div>
+    <div class="verdict"><span class="pill ${v.level}">${v.label}</span>
+      <span class="verdict-text">${v.text}</span></div>
+    <div class="working">Pooled from both: ${hName} <span class="y">${p.hH}</span>/${p.hN} · ${aName} <span class="y">${p.aH}</span>/${p.aN} ${unit}</div>
+    ${oddsBox(p.rate)}
+    ${gamesToggle(tables)}</div>`;
+}
+function compareCard(title, infoKey, hName, hGames, aName, aGames, test, lean, yesWord, noWord, note) {
   const hB = breakdown(hGames, test), aB = breakdown(aGames, test);
   const hi = hB.rate >= aB.rate;
   const tables = gamesTable(hGames, test, hName) + gamesTable(aGames, test, aName);
   return `<div class="market">
-    <div class="market-top"><span class="market-name">${title}</span></div>
+    <div class="market-top"><span class="market-name">${title}${infoIcon(infoKey)}</span></div>
     <div class="compare">
       <div class="side"><div class="t">${hName}</div>
         <div class="p" style="color:${hi?'var(--good)':'var(--muted)'}">${hB.rate}%</div>
@@ -235,7 +293,7 @@ function compareCard(title, hName, hGames, aName, aGames, test, lean, yesWord, n
 }
 
 /* ============================================================
-   DATA  — fetched live from the serverless functions
+   DATA
    ============================================================ */
 const fixturesEl = document.getElementById('fixtures');
 const resultsEl  = document.getElementById('results');
@@ -263,7 +321,6 @@ async function loadFixtures() {
   } catch (e) { noteEl.textContent = `Couldn't load fixtures: ${e.message}`; }
 }
 
-// fetches live data, then hands off to renderFixture
 async function showFixture(fx) {
   resultsEl.classList.remove('hidden');
   resultsEl.innerHTML = `<p class="note">Crunching recent form…</p>`;
@@ -272,8 +329,8 @@ async function showFixture(fx) {
       fetch(`/api/team?id=${fx.homeId}`).then(r => r.json()),
       fetch(`/api/team?id=${fx.awayId}`).then(r => r.json()),
     ]);
-    const home = hRes.results || [];
-    const away = aRes.results || [];
+    const home = (hRes.results || []).slice(0, WINDOW);
+    const away = (aRes.results || []).slice(0, WINDOW);
     if (!home.length || !away.length) {
       const wc = /world cup/i.test(fx.league);
       throw new Error(wc
@@ -286,104 +343,83 @@ async function showFixture(fx) {
   }
 }
 
-// draws the reads from two teams' result arrays (used by both live and demo)
+// draws everything from two teams' last-WINDOW result arrays
 function renderFixture(fx, home, away) {
-    // venue-specific samples (home team's home games vs away team's away games)
-    const hH = enough(homeGames(home)) ? homeGames(home) : home;
-    const aA = enough(awayGames(away)) ? awayGames(away) : away;
     const hasHT = home.some(m => m.htGf != null) && away.some(m => m.htGf != null);
+    const scoreTest = m => m.gf > 0;
+    const cleanTest = m => m.ga === 0;
 
-    /* ---- WHO WINS? (each team on its own venue form) ---- */
-    const hWin = breakdown(hH, m => m.gf > m.ga);
-    const aWin = breakdown(aA, m => m.gf > m.ga);
+    /* ---- WHO WINS? ---- */
+    const winTest = m => m.gf > m.ga;
+    const hWin = breakdown(home, winTest), aWin = breakdown(away, winTest);
     let wLean;
     if (hWin.rate - aWin.rate >= 20)
-      wLean = `<b>${fx.home}</b> have the stronger recent record here — the lean is towards a home win.`;
+      wLean = `<b>${fx.home}</b> have the stronger recent record — the lean is towards a home win.`;
     else if (aWin.rate - hWin.rate >= 20)
-      wLean = `<b>${fx.away}</b> have the better recent record — the lean is towards an away win.`;
+      wLean = `<b>${fx.away}</b> have the stronger recent record — the lean is towards an away win.`;
     else
       wLean = `Too close to call on form — a draw or either side winning all look live. The draw is often the value when two teams are this even.`;
-    const whoWins = compareCard('Who wins?', fx.home, hH, fx.away, aA, m => m.gf > m.ga, wLean, 'won', 'didn\u2019t');
+    const whoWins = compareCard('Who wins?', 'win', fx.home, home, fx.away, away, winTest, wLean, 'won', 'didn\u2019t');
 
-    /* ---- WHO STRIKES FIRST? (honest half-time-lead proxy) ---- */
-    let firstGoal = '';
+    /* ---- AHEAD AT HALF-TIME ---- */
+    let firstHalf = '';
     if (hasHT) {
-      const hLead = breakdown(hH.filter(m => m.htGf != null), m => m.htGf > m.htGa);
-      const aLead = breakdown(aA.filter(m => m.htGf != null), m => m.htGf > m.htGa);
+      const hG = home.filter(m => m.htGf != null), aG = away.filter(m => m.htGf != null);
+      const leadTest = m => m.htGf > m.htGa;
+      const hLead = breakdown(hG, leadTest), aLead = breakdown(aG, leadTest);
       let fLean;
-      if (hLead.rate - aLead.rate >= 20)      fLean = `<b>${fx.home}</b> tend to be in front early.`;
-      else if (aLead.rate - hLead.rate >= 20) fLean = `<b>${fx.away}</b> tend to strike first.`;
-      else                                    fLean = `Neither side reliably gets ahead early — a fast start from either is plausible.`;
-      firstGoal = compareCard('Who strikes first?', fx.home, hH.filter(m => m.htGf != null), fx.away, aA.filter(m => m.htGf != null), m => m.htGf > m.htGa, fLean, 'ahead', 'not',
-        'Shown as “ahead at half-time” — the free data has scores but not goal times, so this is a proxy for scoring first, not the exact first goal.');
+      if (hLead.rate - aLead.rate >= 20)      fLean = `<b>${fx.home}</b> tend to be in front at the break.`;
+      else if (aLead.rate - hLead.rate >= 20) fLean = `<b>${fx.away}</b> tend to lead at half-time.`;
+      else                                    fLean = `Neither side reliably leads at the break — a fast start from either is plausible.`;
+      firstHalf = compareCard('Ahead at half-time', 'half', fx.home, hG, fx.away, aG, leadTest, fLean, 'ahead', 'not',
+        'Half-time lead only — a proxy for an early goal, since the free data has scores but not goal times.');
     }
 
-    /* ---- GOALS (combined match markets, with per-team counts + tables) ---- */
-    const goalRow = (name, line, up, down) => {
-      const test = m => m.gf + m.ga > line;
-      const hb = breakdown(home, test);
-      const ab = breakdown(away, test);
-      const r = blend(hb.rate, ab.rate);
-      const v = verdict(r, up, down);
-      const tables = gamesTable(home, test, fx.home) + gamesTable(away, test, fx.away);
-      return `<div class="market">
-        <div class="market-top"><span class="market-name">${name}</span>
-          <span class="market-stat" style="color:${colour(v.level)}">${r}%</span></div>
-        <div class="bar"><div style="width:${r}%;background:${colour(v.level)}"></div></div>
-        <div class="verdict"><span class="pill ${v.level}">${v.label}</span>
-          <span class="verdict-text">${v.text}</span></div>
-        <div class="working">${fx.home}: <span class="y">${hb.hits.length}</span>/${hb.n} · ${fx.away}: <span class="y">${ab.hits.length}</span>/${ab.n} recent games over ${line}</div>
-        ${gamesToggle(tables)}</div>`;
-    };
-    const bttsTest = m => m.gf > 0 && m.ga > 0;
-    const bttsHb = breakdown(home, bttsTest);
-    const bttsAb = breakdown(away, bttsTest);
-    const bttsR  = blend(bttsHb.rate, bttsAb.rate);
-    const bttsV  = verdict(bttsR, 'Both ends busy.', 'One side often kept quiet.');
-    const bttsCard = `<div class="market">
-        <div class="market-top"><span class="market-name">Both Teams To Score</span>
-          <span class="market-stat" style="color:${colour(bttsV.level)}">${bttsR}%</span></div>
-        <div class="bar"><div style="width:${bttsR}%;background:${colour(bttsV.level)}"></div></div>
-        <div class="verdict"><span class="pill ${bttsV.level}">${bttsV.label}</span>
-          <span class="verdict-text">${bttsV.text}</span></div>
-        <div class="working">${fx.home}: <span class="y">${bttsHb.hits.length}</span>/${bttsHb.n} · ${fx.away}: <span class="y">${bttsAb.hits.length}</span>/${bttsAb.n} recent games both scored</div>
-        ${gamesToggle(gamesTable(home, bttsTest, fx.home) + gamesTable(away, bttsTest, fx.away))}</div>`;
-
+    /* ---- GOALS (pooled) ---- */
     const goals = [
-      goalRow('Over 1.5 Goals', 1.5, 'Plenty of 2+ goal games.', 'These have been tight.'),
-      goalRow('Over 2.5 Goals', 2.5, 'Lots of high-scoring games.', 'Recent games have been low-scoring.'),
-      goalRow('Over 3.5 Goals', 3.5, 'Genuine goal-fests lately.', 'Rarely this many goals.'),
-      bttsCard,
+      combinedCard('Over 1.5 Goals', 'o15', home, away, m => m.gf + m.ga > 1.5, 'Plenty of 2+ goal games.', 'These have been tight.', fx.home, fx.away, 'over 1.5'),
+      combinedCard('Over 2.5 Goals', 'o25', home, away, m => m.gf + m.ga > 2.5, 'Lots of high-scoring games.', 'Recent games have been low-scoring.', fx.home, fx.away, 'over 2.5'),
+      combinedCard('Over 3.5 Goals', 'o35', home, away, m => m.gf + m.ga > 3.5, 'Genuine goal-fests lately.', 'Rarely this many goals.', fx.home, fx.away, 'over 3.5'),
+      combinedCard('Both Teams To Score', 'btts', home, away, m => m.gf > 0 && m.ga > 0, 'Both ends busy.', 'One side often kept quiet.', fx.home, fx.away, 'both scored'),
     ];
 
-    /* ---- EACH TEAM: to score / clean sheet (with the games behind it) ---- */
+    /* ---- MATCHUP ANGLE (attack vs defence narrative) ---- */
+    const hScore = breakdown(home, scoreTest).rate, aClean = breakdown(away, cleanTest).rate;
+    const aScore = breakdown(away, scoreTest).rate, hClean = breakdown(home, cleanTest).rate;
+    const angles = [];
+    if (hScore >= 65 && aClean <= 35)
+      angles.push(`<b>${fx.home}</b> have scored in ${hScore}% of recent games, while <b>${fx.away}</b> kept a clean sheet in just ${aClean}% — the home attack looks the stronger force here.`);
+    if (aScore >= 65 && hClean <= 35)
+      angles.push(`<b>${fx.away}</b> have scored in ${aScore}% of games, up against a <b>${fx.home}</b> side keeping only ${hClean}% clean — the visitors could trouble this defence.`);
+    const angleHtml = angles.length ? `<div class="angle">${angles.join(' ')}</div>` : '';
+
+    /* ---- EACH TEAM ---- */
     const da = [
-      teamCard(`${fx.home} to score`,    hH, m => m.gf > 0,   'Reliable in front of goal at home.', 'Blunt going forward lately.', 'scored', 'blank',    fx.home),
-      teamCard(`${fx.away} to score`,    aA, m => m.gf > 0,   'Reliable in front of goal away.',    'Blunt on their travels.',     'scored', 'blank',    fx.away),
-      teamCard(`${fx.home} clean sheet`, hH, m => m.ga === 0, 'Solid at the back at home.',         'Leaky lately.',               'kept',   'conceded', fx.home),
-      teamCard(`${fx.away} clean sheet`, aA, m => m.ga === 0, 'Solid at the back away.',            'Leaky on the road.',          'kept',   'conceded', fx.away),
+      teamCard(`${fx.home} to score`,    'score', home, scoreTest, 'Reliable in front of goal lately.', 'Blunt going forward lately.', 'scored', 'blank', fx.home),
+      teamCard(`${fx.away} to score`,    'score', away, scoreTest, 'Reliable in front of goal lately.', 'Blunt going forward lately.', 'scored', 'blank', fx.away),
+      teamCard(`${fx.home} clean sheet`, 'clean', home, cleanTest, 'Solid at the back lately.',          'Leaky lately.',               'kept',   'conceded', fx.home),
+      teamCard(`${fx.away} clean sheet`, 'clean', away, cleanTest, 'Solid at the back lately.',          'Leaky lately.',               'kept',   'conceded', fx.away),
     ];
 
     const badges = g => form(g).map(r => `<span class="badge ${r}">${r}</span>`).join('');
 
     resultsEl.innerHTML = `
       <div class="matchup">${fx.home} <span class="at">vs</span> ${fx.away}</div>
-      <p class="disclaimer">Based on each side's last 10 games (home/away form where there's enough data).
-        Every figure lists the games behind it. Descriptive, not a prediction — sanity-check, then compare against the odds.</p>
+      <p class="disclaimer">Based on each side's last ${WINDOW} games. Every figure lists the games behind it —
+        tap “show the games” to verify. Descriptive, not a prediction — then use the odds box to test for value.</p>
       <div class="form-row">
         <div class="form-team"><span class="label">${fx.home} form</span>${badges(home)}</div>
         <div class="form-team"><span class="label">${fx.away} form</span>${badges(away)}</div>
       </div>
       <div class="section-h">Result</div>${whoWins}
-      ${firstGoal ? `<div class="section-h">First goal</div>${firstGoal}` : ''}
+      ${firstHalf ? `<div class="section-h">First half</div>${firstHalf}` : ''}
       <div class="section-h">Goals</div>${goals.join('')}
-      <div class="section-h">Each team</div>${da.join('')}`;
+      <div class="section-h">Each team</div>${angleHtml}${da.join('')}`;
     resultsEl.scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
 
 /* ============================================================
-   DEMO MATCH — sample data so you can exercise every read any
-   time (handy out of season). Doesn't touch the live API.
+   DEMO MATCH — sample data, exercises every read out of season
    ============================================================ */
 const DEMO = {
   fx: { home:'Demo United', away:'Sample City', league:'Demo' },
@@ -399,7 +435,6 @@ function showDemo() {
   renderFixture(DEMO.fx, DEMO.home, DEMO.away);
 }
 
-// add the demo button under the fixture list
 const demoBtn = document.createElement('button');
 demoBtn.className = 'fixture-btn';
 demoBtn.style.borderStyle = 'dashed';
