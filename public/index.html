@@ -343,10 +343,15 @@ function renderSlip() {
    ============================================================ */
 async function loadHighlights() {
   const dash = document.getElementById('dash');
+  const shell = body => { dash.innerHTML = `<h3>Today's best angles</h3>${body}`; dash.style.display = 'block'; };
   try {
     const r = await fetch('/api/highlights');
     const d = await r.json();
-    if (!r.ok || d.empty || (!d.attacks.length && !d.defences.length)) return; // stay hidden if nothing yet
+    if (!r.ok) { shell(`<div class="sub">Couldn't load standings right now — refresh in a minute. (${d.error || r.status})</div>`); return; }
+    if (d.empty || (!d.attacks.length && !d.defences.length)) {
+      shell(`<div class="sub">No in-season standings to rank yet — the European leagues are between seasons and the World Cup hasn't kicked off. This fills in automatically once games are played.</div>`);
+      return;
+    }
     const col = (title, items) => items.length ? `<div class="dash-col"><div class="h">${title}</div>` +
       items.map(t => `<div class="dash-item"><span class="nm">${t.name}<small>${t.league}</small></span>
         <span class="st">${t.stat}</span></div>`).join('') + `</div>` : '';
@@ -358,7 +363,7 @@ async function loadHighlights() {
         ${col('Hottest form', d.form)}
       </div>`;
     dash.style.display = 'block';
-  } catch (e) { /* leave the dashboard hidden on failure */ }
+  } catch (e) { shell(`<div class="sub">Couldn't reach the data service — refresh in a minute.</div>`); }
 }
 
 /* ============================================================
@@ -366,10 +371,15 @@ async function loadHighlights() {
    ============================================================ */
 async function loadTrack() {
   const el = document.getElementById('track');
+  const shell = body => { el.innerHTML = `<h3>Track record</h3>${body}`; el.style.display = 'block'; };
   try {
     const r = await fetch('/api/backtest');
     const d = await r.json();
-    if (!r.ok || d.empty) return;
+    if (!r.ok) { shell(`<div class="sub">Couldn't build the track record right now — refresh in a minute. (${d.error || r.status})</div>`); return; }
+    if (d.empty) {
+      shell(`<div class="sub">${d.note || 'Not enough in-season games to backtest yet — this builds itself once matches are played.'}</div>`);
+      return;
+    }
     const ly = d.bands.leansYes;
     const bandRow = (name, b, desc) => b.n
       ? `<div class="dash-item"><span class="nm">${name}<small>${desc}</small></span>
@@ -393,7 +403,7 @@ async function loadTrack() {
         <div class="dash-col"><div class="h">Recent calls</div>${d.examples.map(exRow).join('')}</div>
       </div>`;
     el.style.display = 'block';
-  } catch (e) { /* leave hidden on failure */ }
+  } catch (e) { shell(`<div class="sub">Couldn't reach the data service — refresh in a minute.</div>`); }
 }
 
 /* ============================================================
