@@ -162,6 +162,7 @@ async function loadFixtures() {
   } catch (e) { noteEl.textContent = `Couldn't load fixtures: ${e.message}`; }
 }
 
+// fetches live data, then hands off to renderFixture
 async function showFixture(fx) {
   resultsEl.classList.remove('hidden');
   resultsEl.innerHTML = `<p class="note">Crunching recent form…</p>`;
@@ -178,7 +179,14 @@ async function showFixture(fx) {
         ? 'No recent form data yet — World Cup reads fill in once the group games kick off (11 June).'
         : 'Not enough recent results for one of these teams.');
     }
+    renderFixture(fx, home, away);
+  } catch (e) {
+    resultsEl.innerHTML = `<p class="note">Couldn't load that one: ${e.message}</p>`;
+  }
+}
 
+// draws the reads from two teams' result arrays (used by both live and demo)
+function renderFixture(fx, home, away) {
     // venue-specific samples (fall back to overall if too few)
     const hH = enough(homeGames(home)) ? homeGames(home) : home;
     const aA = enough(awayGames(away)) ? awayGames(away) : away;
@@ -229,13 +237,34 @@ async function showFixture(fx) {
       <div class="section-h">Result</div>${resultCard}
       <div class="section-h">Defence &amp; attack</div>${da.join('')}`;
     resultsEl.scrollIntoView({ behavior:'smooth', block:'nearest' });
-  } catch (e) {
-    resultsEl.innerHTML = `<p class="note">Couldn't load that one: ${e.message}</p>`;
-  }
 }
 
+/* ============================================================
+   DEMO MATCH — sample data so you can exercise every read any
+   time (handy out of season). Doesn't touch the live API.
+   ============================================================ */
+const DEMO = {
+  fx: { home:'Demo United', away:'Sample City', league:'Demo' },
+  home: [ {gf:3,ga:1,venue:'H',htGf:1,htGa:0},{gf:2,ga:2,venue:'A',htGf:1,htGa:1},{gf:1,ga:0,venue:'H',htGf:0,htGa:0},
+          {gf:4,ga:1,venue:'H',htGf:2,htGa:0},{gf:0,ga:1,venue:'A',htGf:0,htGa:1},{gf:2,ga:0,venue:'H',htGf:1,htGa:0} ],
+  away: [ {gf:1,ga:1,venue:'A',htGf:0,htGa:1},{gf:0,ga:2,venue:'H',htGf:0,htGa:1},{gf:2,ga:3,venue:'A',htGf:1,htGa:2},
+          {gf:1,ga:1,venue:'H',htGf:1,htGa:0},{gf:0,ga:0,venue:'A',htGf:0,htGa:0},{gf:1,ga:2,venue:'A',htGf:0,htGa:1} ],
+};
+function showDemo() {
+  document.querySelectorAll('.fixture-btn').forEach(b => b.classList.remove('active'));
+  renderFixture(DEMO.fx, DEMO.home, DEMO.away);
+}
+
+// add the demo button under the fixture list
+const demoBtn = document.createElement('button');
+demoBtn.className = 'fixture-btn';
+demoBtn.style.borderStyle = 'dashed';
+demoBtn.innerHTML = `<span class="fixture-teams">▶ See a demo match</span>
+                     <span class="fixture-league">sample data</span>`;
+demoBtn.onclick = showDemo;
+
 loadFixtures();
+fixturesEl.parentNode.insertBefore(demoBtn, noteEl.nextSibling);
 </script>
 </body>
 </html>
-
