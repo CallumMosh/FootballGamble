@@ -341,69 +341,68 @@ function renderSlip() {
 /* ============================================================
    LEAGUE DASHBOARD  — "Today's best angles" from /api/highlights
    ============================================================ */
-async function loadHighlights() {
+function renderDash(d) {
   const dash = document.getElementById('dash');
   const shell = body => { dash.innerHTML = `<h3>Today's best angles</h3>${body}`; dash.style.display = 'block'; };
-  try {
-    const r = await fetch('/api/highlights');
-    const d = await r.json();
-    if (!r.ok) { shell(`<div class="sub">Couldn't load standings right now — refresh in a minute. (${d.error || r.status})</div>`); return; }
-    if (d.empty || (!d.attacks.length && !d.defences.length)) {
-      shell(`<div class="sub">No in-season standings to rank yet — the European leagues are between seasons and the World Cup hasn't kicked off. This fills in automatically once games are played.</div>`);
-      return;
-    }
-    const col = (title, items) => items.length ? `<div class="dash-col"><div class="h">${title}</div>` +
-      items.map(t => `<div class="dash-item"><span class="nm">${t.name}<small>${t.league}</small></span>
-        <span class="st">${t.stat}</span></div>`).join('') + `</div>` : '';
-    dash.innerHTML = `<h3>Today's best angles</h3>
-      <div class="sub">Statistical extremes from current league standings — a starting point, not a tip.</div>
-      <div class="dash-grid">
-        ${col('Sharpest attacks', d.attacks)}
-        ${col('Leakiest defences', d.defences)}
-        ${col('Hottest form', d.form)}
-      </div>`;
-    dash.style.display = 'block';
-  } catch (e) { shell(`<div class="sub">Couldn't reach the data service — refresh in a minute.</div>`); }
+  if (!d || d.dashEmpty || (!d.dashboard.attacks.length && !d.dashboard.defences.length)) {
+    shell(`<div class="sub">No in-season standings to rank yet — the European leagues are between seasons and the World Cup hasn't kicked off. This fills in automatically once games are played.</div>`);
+    return;
+  }
+  const col = (title, items) => items.length ? `<div class="dash-col"><div class="h">${title}</div>` +
+    items.map(t => `<div class="dash-item"><span class="nm">${t.name}<small>${t.league}</small></span>
+      <span class="st">${t.stat}</span></div>`).join('') + `</div>` : '';
+  dash.innerHTML = `<h3>Today's best angles</h3>
+    <div class="sub">Statistical extremes from current league standings — a starting point, not a tip.</div>
+    <div class="dash-grid">
+      ${col('Sharpest attacks', d.dashboard.attacks)}
+      ${col('Leakiest defences', d.dashboard.defences)}
+      ${col('Hottest form', d.dashboard.form)}
+    </div>`;
+  dash.style.display = 'block';
 }
 
-/* ============================================================
-   TRACK RECORD  — honest backtest from /api/backtest
-   ============================================================ */
-async function loadTrack() {
+function renderTrack(d) {
   const el = document.getElementById('track');
   const shell = body => { el.innerHTML = `<h3>Track record</h3>${body}`; el.style.display = 'block'; };
+  if (!d || d.trackEmpty || !d.track) {
+    shell(`<div class="sub">Not enough in-season games to backtest yet — this builds itself once matches are played.</div>`);
+    return;
+  }
+  const t = d.track, ly = t.bands.leansYes;
+  const bandRow = (name, b, desc) => b.n
+    ? `<div class="dash-item"><span class="nm">${name}<small>${desc}</small></span>
+       <span class="st">${b.rate}% · ${b.landed}/${b.n}</span></div>` : '';
+  const mkRow = m => `<div class="dash-item"><span class="nm">${m.label}</span>
+    <span class="st">${m.rate}% · ${m.landed}/${m.n}</span></div>`;
+  const exRow = e => `<div class="dash-item">
+    <span class="nm">${e.team} ${e.label.toLowerCase()}<small>vs ${e.opp} · read ${e.rate}%</small></span>
+    <span class="st" style="color:${e.hit ? 'var(--good)' : 'var(--bad)'}">${e.hit ? '✓ landed' : '✗ missed'}</span></div>`;
+  el.innerHTML = `<h3>Track record</h3>
+    <div class="sub">Every past game replayed using only the 6 games before it — no hindsight, losses included.
+      ${t.matchesAnalysed} games across ${t.teamsUsed} ${t.league} teams.</div>
+    <div class="track-head">When the read said <b>“leans yes”</b>, the outcome actually happened
+      <b>${ly.rate}%</b> of the time <span>(${ly.landed} of ${ly.n} calls)</span></div>
+    <div class="dash-grid">
+      <div class="dash-col"><div class="h">Outcome rate by call type</div>
+        ${bandRow('Leans yes', t.bands.leansYes, 'we backed it')}
+        ${bandRow('Coin-flip', t.bands.coinflip, 'no strong lean')}
+        ${bandRow('Avoid', t.bands.avoid, 'we warned off')}</div>
+      <div class="dash-col"><div class="h">“Leans yes” by market</div>${t.markets.map(mkRow).join('')}</div>
+      <div class="dash-col"><div class="h">Recent calls</div>${t.examples.map(exRow).join('')}</div>
+    </div>`;
+  el.style.display = 'block';
+}
+
+// one call powers both panels (dashboard + track record)
+async function loadInsights() {
   try {
-    const r = await fetch('/api/backtest');
-    const d = await r.json();
-    if (!r.ok) { shell(`<div class="sub">Couldn't build the track record right now — refresh in a minute. (${d.error || r.status})</div>`); return; }
-    if (d.empty) {
-      shell(`<div class="sub">${d.note || 'Not enough in-season games to backtest yet — this builds itself once matches are played.'}</div>`);
-      return;
-    }
-    const ly = d.bands.leansYes;
-    const bandRow = (name, b, desc) => b.n
-      ? `<div class="dash-item"><span class="nm">${name}<small>${desc}</small></span>
-         <span class="st">${b.rate}% · ${b.landed}/${b.n}</span></div>` : '';
-    const mkRow = m => `<div class="dash-item"><span class="nm">${m.label}</span>
-      <span class="st">${m.rate}% · ${m.landed}/${m.n}</span></div>`;
-    const exRow = e => `<div class="dash-item">
-      <span class="nm">${e.team} ${e.label.toLowerCase()}<small>vs ${e.opp} · read ${e.rate}%</small></span>
-      <span class="st" style="color:${e.hit ? 'var(--good)' : 'var(--bad)'}">${e.hit ? '✓ landed' : '✗ missed'}</span></div>`;
-    el.innerHTML = `<h3>Track record</h3>
-      <div class="sub">Every past game replayed using only the 6 games before it — no hindsight, losses included.
-        ${d.matchesAnalysed} games across ${d.teamsUsed} ${d.league} teams.</div>
-      <div class="track-head">When the read said <b>“leans yes”</b>, the outcome actually happened
-        <b>${ly.rate}%</b> of the time <span>(${ly.landed} of ${ly.n} calls)</span></div>
-      <div class="dash-grid">
-        <div class="dash-col"><div class="h">Outcome rate by call type</div>
-          ${bandRow('Leans yes', d.bands.leansYes, 'we backed it')}
-          ${bandRow('Coin-flip', d.bands.coinflip, 'no strong lean')}
-          ${bandRow('Avoid', d.bands.avoid, 'we warned off')}</div>
-        <div class="dash-col"><div class="h">“Leans yes” by market</div>${d.markets.map(mkRow).join('')}</div>
-        <div class="dash-col"><div class="h">Recent calls</div>${d.examples.map(exRow).join('')}</div>
-      </div>`;
-    el.style.display = 'block';
-  } catch (e) { shell(`<div class="sub">Couldn't reach the data service — refresh in a minute.</div>`); }
+    const d = await fetchJson('/api/insights');
+    renderDash(d);
+    renderTrack(d);
+  } catch (e) {
+    renderDash(null);
+    renderTrack(null);
+  }
 }
 
 /* ============================================================
@@ -464,11 +463,20 @@ const fixturesEl = document.getElementById('fixtures');
 const resultsEl  = document.getElementById('results');
 const noteEl     = document.getElementById('note');
 
+// fetch JSON with one automatic retry if we're briefly rate-limited (429)
+async function fetchJson(url, tries = 2) {
+  for (let i = 0; i < tries; i++) {
+    const r = await fetch(url);
+    const data = await r.json().catch(() => ({}));
+    if (r.status === 429 && i < tries - 1) { await new Promise(s => setTimeout(s, 6000)); continue; }
+    if (!r.ok) throw new Error(data.error || (r.status === 429 ? 'Busy — try again in a moment.' : `Error ${r.status}`));
+    return data;
+  }
+}
+
 async function loadFixtures() {
   try {
-    const r = await fetch('/api/fixtures');
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.error || 'Failed to load');
+    const data = await fetchJson('/api/fixtures');
     if (!data.length) { noteEl.textContent = 'No upcoming fixtures in the next 10 days.'; return; }
     noteEl.style.display = 'none';
     data.forEach(fx => {
@@ -610,8 +618,7 @@ demoBtn.innerHTML = `<span class="fixture-teams">▶ See a demo match</span>
 demoBtn.onclick = showDemo;
 
 loadFixtures();
-loadHighlights();
-loadTrack();
+setTimeout(loadInsights, 1500); // stagger: fixtures first, then the shared insights call
 fixturesEl.parentNode.insertBefore(demoBtn, noteEl.nextSibling);
 </script>
 </body>
