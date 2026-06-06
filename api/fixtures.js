@@ -1,9 +1,9 @@
 // api/fixtures.js
-// Runs on Vercel's servers (NOT in the browser), so your secret key stays hidden.
-// It returns the upcoming fixtures for the big 5 leagues as a simple list.
-//
-// You never need to edit this file. The only thing it relies on is the
-// environment variable FOOTBALL_DATA_KEY, which you set in the Vercel dashboard.
+// Runs on Vercel's servers (not the browser), so your secret key stays hidden.
+// Returns upcoming fixtures across the competitions below as a simple list.
+// You never need to edit this file (except the LEAGUE_IDS list if you ever
+// want to add/remove competitions). It reads the FOOTBALL_DATA_KEY you set
+// in the Vercel dashboard.
 
 const LEAGUE_IDS = {
   2021: 'Premier League',
@@ -11,23 +11,21 @@ const LEAGUE_IDS = {
   2019: 'Serie A',
   2002: 'Bundesliga',
   2015: 'Ligue 1',
+  2000: 'World Cup',     // free on football-data — live through summer 2026
+  2013: 'Brasileirão',   // Brazil's league runs through our summer too
 };
 
-// --- a tiny cache so we don't burn through the 10-requests-per-minute limit ---
+// only show matches that haven't been played yet
+const UPCOMING = ['SCHEDULED', 'TIMED'];
+
 let cache = { at: 0, data: null };
 const CACHE_MINUTES = 30;
-
-function ymd(date) {
-  return date.toISOString().slice(0, 10); // YYYY-MM-DD
-}
+const ymd = d => d.toISOString().slice(0, 10);
 
 export default async function handler(req, res) {
   const key = process.env.FOOTBALL_DATA_KEY;
-  if (!key) {
-    return res.status(500).json({ error: 'No API key set. Add FOOTBALL_DATA_KEY in Vercel settings.' });
-  }
+  if (!key) return res.status(500).json({ error: 'No API key set. Add FOOTBALL_DATA_KEY in Vercel settings.' });
 
-  // serve from cache if it's fresh
   if (cache.data && Date.now() - cache.at < CACHE_MINUTES * 60 * 1000) {
     return res.status(200).json(cache.data);
   }
@@ -37,9 +35,10 @@ export default async function handler(req, res) {
     const tenDays = new Date(today.getTime() + 10 * 24 * 60 * 60 * 1000);
     const ids = Object.keys(LEAGUE_IDS).join(',');
 
-    // ONE request gets fixtures across all five leagues
+    // ONE request gets fixtures across all the competitions above.
+    // We don't filter by status in the URL (it's unreliable) — we filter below.
     const url = `https://api.football-data.org/v4/matches?competitions=${ids}` +
-                `&dateFrom=${ymd(today)}&dateTo=${ymd(tenDays)}&status=SCHEDULED`;
+                `&dateFrom=${ymd(today)}&dateTo=${ymd(tenDays)}`;
 
     const r = await fetch(url, { headers: { 'X-Auth-Token': key } });
     if (!r.ok) {
@@ -48,15 +47,19 @@ export default async function handler(req, res) {
     }
 
     const json = await r.json();
-    const fixtures = (json.matches || []).map(m => ({
-      id: String(m.id),
-      league: m.competition?.name || LEAGUE_IDS[m.competition?.id] || 'Football',
-      date: m.utcDate,
-      home: m.homeTeam?.shortName || m.homeTeam?.name || 'Home',
-      away: m.awayTeam?.shortName || m.awayTeam?.name || 'Away',
-      homeId: m.homeTeam?.id,
-      awayId: m.awayTeam?.id,
-    })).filter(f => f.homeId && f.awayId);
+    const fixtures = (json.matches || [])
+      .filter(m => UPCOMING.includes(m.status))
+      .map(m => ({
+        id: String(m.id),
+        league: m.competition?.name || LEAGUE_IDS[m.competition?.id] || 'Football',
+        date: m.utcDate,
+        home: m.homeTeam?.shortName || m.homeTeam?.name || 'Home',
+        away: m.awayTeam?.shortName || m.awayTeam?.name || 'Away',
+        homeId: m.homeTeam?.id,
+        awayId: m.awayTeam?.id,
+      }))
+      .filter(f => f.homeId && f.awayId)
+      .sort((a, b) => new Date(a.date) - new Date(b.date)); // soonest first
 
     cache = { at: Date.now(), data: fixtures };
     res.status(200).json(fixtures);
