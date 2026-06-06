@@ -63,6 +63,19 @@
   .compare .side .p{font-family:'Space Mono',monospace;font-size:22px;font-weight:700}
   .compare .side .w{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5}
   .lead-note{font-size:12px;color:var(--muted);font-style:italic;margin-top:10px}
+  .games-toggle{all:unset;cursor:pointer;display:inline-block;margin-top:12px;font-family:'Space Mono',monospace;
+    font-size:12px;color:var(--pitch);border:1px solid var(--line);border-radius:7px;padding:5px 10px}
+  .games-toggle:hover{border-color:var(--pitch)}
+  .games-wrap{margin-top:12px}
+  .games-cap{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:10px 0 5px}
+  table.games{width:100%;border-collapse:collapse;font-size:13px}
+  table.games th{text-align:left;font-weight:600;color:var(--muted);font-size:11px;text-transform:uppercase;
+    letter-spacing:.5px;padding:6px 8px;border-bottom:1px solid var(--line)}
+  table.games td{padding:7px 8px;border-bottom:1px solid var(--line);font-family:'Space Mono',monospace}
+  table.games td.opp{font-family:'Archivo',sans-serif}
+  table.games tr:last-child td{border-bottom:none}
+  table.games .y{color:var(--good);font-weight:700}
+  table.games .n{color:var(--bad);font-weight:700}
   .form-row{display:flex;gap:18px;flex-wrap:wrap;margin:18px 0 4px}
   .form-team{font-size:13px}.form-team .label{color:var(--muted);margin-right:8px}
   .badge{font-family:'Space Mono',monospace;font-weight:700;font-size:12px;display:inline-grid;place-items:center;
@@ -158,8 +171,38 @@ function workingLine(b, yesWord = 'yes', noWord = 'no') {
   return s;
 }
 
-/* a team-specific card: headline %, verdict, and the games behind it */
-function teamCard(name, b, up, down, yesWord, noWord) {
+/* builds the drop-down table of a team's games, with a tick/cross per game */
+function gamesTable(games, test, teamName) {
+  const rows = games.map(m => {
+    const hit = test(m);
+    const ht = m.htGf == null ? '–' : `${m.htGf}\u2013${m.htGa}`;
+    return `<tr>
+      <td class="opp">${m.opponent || '—'}</td>
+      <td>${m.venue}</td>
+      <td>${ht}</td>
+      <td>${m.gf}\u2013${m.ga}</td>
+      <td class="${hit ? 'y' : 'n'}">${hit ? '✓' : '✗'}</td></tr>`;
+  }).join('');
+  return `<div class="games-cap">${teamName} — last ${games.length} (scores as ${teamName}'s–opponent's)</div>
+    <table class="games"><thead><tr><th>Opponent</th><th>H/A</th><th>HT</th><th>FT</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+}
+// the little "show the games" button + hidden table block
+function gamesToggle(tablesHtml) {
+  return `<button class="games-toggle" onclick="toggleGames(this)">▾ show the games</button>
+    <div class="games-wrap" style="display:none">${tablesHtml}</div>`;
+}
+// expands / collapses the table under a card (global so inline onclick can reach it)
+window.toggleGames = function (btn) {
+  const w = btn.nextElementSibling;
+  const open = w.style.display === 'block';
+  w.style.display = open ? 'none' : 'block';
+  btn.textContent = open ? '▾ show the games' : '▴ hide the games';
+};
+
+/* a team-specific card: headline %, verdict, the working, and a games table */
+function teamCard(name, games, test, up, down, yesWord, noWord, teamName) {
+  const b = breakdown(games, test);
   const v = verdict(b.rate, up, down);
   return `<div class="market">
     <div class="market-top"><span class="market-name">${name}</span>
@@ -167,12 +210,15 @@ function teamCard(name, b, up, down, yesWord, noWord) {
     <div class="bar"><div style="width:${b.rate}%;background:${colour(v.level)}"></div></div>
     <div class="verdict"><span class="pill ${v.level}">${v.label}</span>
       <span class="verdict-text">${v.text}</span></div>
-    <div class="working">${workingLine(b, yesWord, noWord)}</div></div>`;
+    <div class="working">${workingLine(b, yesWord, noWord)}</div>
+    ${gamesToggle(gamesTable(games, test, teamName))}</div>`;
 }
 
 /* a head-to-head card comparing the two teams on the same question */
-function compareCard(title, hName, hB, aName, aB, lean, yesWord, noWord, note) {
+function compareCard(title, hName, hGames, aName, aGames, test, lean, yesWord, noWord, note) {
+  const hB = breakdown(hGames, test), aB = breakdown(aGames, test);
   const hi = hB.rate >= aB.rate;
+  const tables = gamesTable(hGames, test, hName) + gamesTable(aGames, test, aName);
   return `<div class="market">
     <div class="market-top"><span class="market-name">${title}</span></div>
     <div class="compare">
@@ -184,7 +230,8 @@ function compareCard(title, hName, hB, aName, aB, lean, yesWord, noWord, note) {
         <div class="w">${workingLine(aB, yesWord, noWord)}</div></div>
     </div>
     <div class="verdict" style="margin-top:14px"><span class="verdict-text">${lean}</span></div>
-    ${note ? `<div class="lead-note">${note}</div>` : ''}</div>`;
+    ${note ? `<div class="lead-note">${note}</div>` : ''}
+    ${gamesToggle(tables)}</div>`;
 }
 
 /* ============================================================
@@ -256,7 +303,7 @@ function renderFixture(fx, home, away) {
       wLean = `<b>${fx.away}</b> have the better recent record — the lean is towards an away win.`;
     else
       wLean = `Too close to call on form — a draw or either side winning all look live. The draw is often the value when two teams are this even.`;
-    const whoWins = compareCard('Who wins?', fx.home, hWin, fx.away, aWin, wLean, 'won', 'didn\u2019t');
+    const whoWins = compareCard('Who wins?', fx.home, hH, fx.away, aA, m => m.gf > m.ga, wLean, 'won', 'didn\u2019t');
 
     /* ---- WHO STRIKES FIRST? (honest half-time-lead proxy) ---- */
     let firstGoal = '';
@@ -267,26 +314,30 @@ function renderFixture(fx, home, away) {
       if (hLead.rate - aLead.rate >= 20)      fLean = `<b>${fx.home}</b> tend to be in front early.`;
       else if (aLead.rate - hLead.rate >= 20) fLean = `<b>${fx.away}</b> tend to strike first.`;
       else                                    fLean = `Neither side reliably gets ahead early — a fast start from either is plausible.`;
-      firstGoal = compareCard('Who strikes first?', fx.home, hLead, fx.away, aLead, fLean, 'ahead', 'not',
+      firstGoal = compareCard('Who strikes first?', fx.home, hH.filter(m => m.htGf != null), fx.away, aA.filter(m => m.htGf != null), m => m.htGf > m.htGa, fLean, 'ahead', 'not',
         'Shown as “ahead at half-time” — the free data has scores but not goal times, so this is a proxy for scoring first, not the exact first goal.');
     }
 
-    /* ---- GOALS (combined match markets, with per-team counts) ---- */
+    /* ---- GOALS (combined match markets, with per-team counts + tables) ---- */
     const goalRow = (name, line, up, down) => {
-      const hb = breakdown(home, m => m.gf + m.ga > line);
-      const ab = breakdown(away, m => m.gf + m.ga > line);
+      const test = m => m.gf + m.ga > line;
+      const hb = breakdown(home, test);
+      const ab = breakdown(away, test);
       const r = blend(hb.rate, ab.rate);
       const v = verdict(r, up, down);
+      const tables = gamesTable(home, test, fx.home) + gamesTable(away, test, fx.away);
       return `<div class="market">
         <div class="market-top"><span class="market-name">${name}</span>
           <span class="market-stat" style="color:${colour(v.level)}">${r}%</span></div>
         <div class="bar"><div style="width:${r}%;background:${colour(v.level)}"></div></div>
         <div class="verdict"><span class="pill ${v.level}">${v.label}</span>
           <span class="verdict-text">${v.text}</span></div>
-        <div class="working">${fx.home}: <span class="y">${hb.hits.length}</span>/${hb.n} · ${fx.away}: <span class="y">${ab.hits.length}</span>/${ab.n} recent games over ${line}</div></div>`;
+        <div class="working">${fx.home}: <span class="y">${hb.hits.length}</span>/${hb.n} · ${fx.away}: <span class="y">${ab.hits.length}</span>/${ab.n} recent games over ${line}</div>
+        ${gamesToggle(tables)}</div>`;
     };
-    const bttsHb = breakdown(home, m => m.gf>0 && m.ga>0);
-    const bttsAb = breakdown(away, m => m.gf>0 && m.ga>0);
+    const bttsTest = m => m.gf > 0 && m.ga > 0;
+    const bttsHb = breakdown(home, bttsTest);
+    const bttsAb = breakdown(away, bttsTest);
     const bttsR  = blend(bttsHb.rate, bttsAb.rate);
     const bttsV  = verdict(bttsR, 'Both ends busy.', 'One side often kept quiet.');
     const bttsCard = `<div class="market">
@@ -295,7 +346,8 @@ function renderFixture(fx, home, away) {
         <div class="bar"><div style="width:${bttsR}%;background:${colour(bttsV.level)}"></div></div>
         <div class="verdict"><span class="pill ${bttsV.level}">${bttsV.label}</span>
           <span class="verdict-text">${bttsV.text}</span></div>
-        <div class="working">${fx.home}: <span class="y">${bttsHb.hits.length}</span>/${bttsHb.n} · ${fx.away}: <span class="y">${bttsAb.hits.length}</span>/${bttsAb.n} recent games both scored</div></div>`;
+        <div class="working">${fx.home}: <span class="y">${bttsHb.hits.length}</span>/${bttsHb.n} · ${fx.away}: <span class="y">${bttsAb.hits.length}</span>/${bttsAb.n} recent games both scored</div>
+        ${gamesToggle(gamesTable(home, bttsTest, fx.home) + gamesTable(away, bttsTest, fx.away))}</div>`;
 
     const goals = [
       goalRow('Over 1.5 Goals', 1.5, 'Plenty of 2+ goal games.', 'These have been tight.'),
@@ -306,10 +358,10 @@ function renderFixture(fx, home, away) {
 
     /* ---- EACH TEAM: to score / clean sheet (with the games behind it) ---- */
     const da = [
-      teamCard(`${fx.home} to score`,    breakdown(hH, m => m.gf > 0),  'Reliable in front of goal at home.', 'Blunt going forward lately.', 'scored', 'blank'),
-      teamCard(`${fx.away} to score`,    breakdown(aA, m => m.gf > 0),  'Reliable in front of goal away.',    'Blunt on their travels.',     'scored', 'blank'),
-      teamCard(`${fx.home} clean sheet`, breakdown(hH, m => m.ga === 0), 'Solid at the back at home.',         'Leaky lately.',               'kept', 'conceded'),
-      teamCard(`${fx.away} clean sheet`, breakdown(aA, m => m.ga === 0), 'Solid at the back away.',            'Leaky on the road.',          'kept', 'conceded'),
+      teamCard(`${fx.home} to score`,    hH, m => m.gf > 0,   'Reliable in front of goal at home.', 'Blunt going forward lately.', 'scored', 'blank',    fx.home),
+      teamCard(`${fx.away} to score`,    aA, m => m.gf > 0,   'Reliable in front of goal away.',    'Blunt on their travels.',     'scored', 'blank',    fx.away),
+      teamCard(`${fx.home} clean sheet`, hH, m => m.ga === 0, 'Solid at the back at home.',         'Leaky lately.',               'kept',   'conceded', fx.home),
+      teamCard(`${fx.away} clean sheet`, aA, m => m.ga === 0, 'Solid at the back away.',            'Leaky on the road.',          'kept',   'conceded', fx.away),
     ];
 
     const badges = g => form(g).map(r => `<span class="badge ${r}">${r}</span>`).join('');
