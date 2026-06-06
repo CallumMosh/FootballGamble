@@ -8,8 +8,9 @@ const COMPETITIONS = {
   2002: 'Bundesliga', 2015: 'Ligue 1', 2000: 'World Cup', 2013: 'Brasileirão',
 };
 
-let cache = { at: 0, data: null };
+let cache = { at: 0, data: null, ttl: 0 };
 const CACHE_MINUTES = 120;
+const EMPTY_MINUTES = 5;   // don't lock in a transient "no data" result
 const per = (n, g) => g > 0 ? +(n / g).toFixed(2) : 0;
 const winsInForm = f => (String(f || '').match(/W/g) || []).length;
 
@@ -26,7 +27,7 @@ export default async function handler(req, res) {
   if (!key) return res.status(500).json({ error: 'No API key set.' });
   const debug = req.query && req.query.debug !== undefined;
 
-  if (!debug && cache.data && Date.now() - cache.at < CACHE_MINUTES * 60 * 1000) {
+  if (!debug && cache.data && Date.now() - cache.at < cache.ttl) {
     return res.status(200).json(cache.data);
   }
 
@@ -78,7 +79,7 @@ export default async function handler(req, res) {
     };
 
     if (debug) return res.status(200).json({ ...data, debug: dbg });
-    cache = { at: Date.now(), data };
+    cache = { at: Date.now(), data, ttl: (data.empty ? EMPTY_MINUTES : CACHE_MINUTES) * 60 * 1000 };
     res.status(200).json(data);
   } catch (e) {
     res.status(500).json({ error: 'Could not load standings.' });
