@@ -182,8 +182,8 @@ const GLOSS = {
   o25:  "Over 2.5 Goals: the match finishes with 3 or more goals in total.",
   o35:  "Over 3.5 Goals: the match finishes with 4 or more goals in total.",
   btts: "Both Teams To Score: both teams find the net at least once in the same match.",
-  score:"To Score: the team scores at least one goal in the match.",
-  clean:"Clean Sheet: the team concedes zero goals — keeps the opponent scoreless.",
+  score:"To Score: the team scores at least one goal — adjusted for how often the opponent concedes.",
+  clean:"Clean Sheet: the team concedes zero goals — adjusted for how often the opponent scores.",
 };
 const infoIcon = key => GLOSS[key] ? `<span class="info" tabindex="0" data-tip="${GLOSS[key]}">i</span>` : '';
 
@@ -425,6 +425,28 @@ function teamCard(name, infoKey, games, test, up, down, yesWord, noWord, teamNam
     ${slipBtn(name, matchTag, b.rate)}
     ${gamesToggle(gamesTable(games, test, teamName))}</div>`;
 }
+// opponent-aware: blends the team's own record with the opponent's matching record,
+// shown transparently. The team's own games are still listed for verification.
+function temperedCard(name, infoKey, games, test, oppFactor, oppText, up, down, yesWord, noWord, teamName, matchTag) {
+  const own = breakdown(games, test);
+  const tempered = Math.round((own.rate + oppFactor) / 2);
+  const v = verdict(tempered, up, down);
+  const txt = tempered >= 65
+    ? `Looks likely at ~<b>${tempered}%</b> with the opponent factored in. ${up} Just check the odds aren't already short.`
+    : tempered >= 45
+    ? `A coin-flip at ~<b>${tempered}%</b> once the opponent's in — no clear edge, so lean cautious.`
+    : `Looks unlikely at ~<b>${tempered}%</b> against this opponent. ${down}`;
+  return `<div class="market">
+    <div class="market-top"><span class="market-name">${name}${infoIcon(infoKey)}</span>
+      <span class="market-stat" style="color:${colour(v.level)}">${tempered}%</span></div>
+    <div class="bar"><div style="width:${tempered}%;background:${colour(v.level)}"></div></div>
+    <div class="verdict"><span class="pill ${v.level}">${v.label}</span>
+      <span class="verdict-text">${txt}</span></div>
+    <div class="working">${teamName} own record <b>${own.rate}%</b> · ${oppText} → tempered to <b>${tempered}%</b>.<br>${workingLine(own, yesWord, noWord)}</div>
+    ${oddsBox(tempered)}
+    ${slipBtn(name, matchTag, tempered)}
+    ${gamesToggle(gamesTable(games, test, teamName))}</div>`;
+}
 function combinedCard(name, infoKey, hGames, aGames, test, up, down, hName, aName, unit, matchTag) {
   const p = pooled(hGames, aGames, test);
   const v = verdict(p.rate, up, down);
@@ -501,9 +523,12 @@ async function showFixture(fx) {
   resultsEl.classList.remove('hidden');
   resultsEl.innerHTML = `<p class="note">Crunching recent form…</p>`;
   try {
-    const [hRes, aRes] = await Promise.all([
+    const [hRes, aRes, standings] = await Promise.all([
       fetch(`/api/team?id=${fx.homeId}`).then(r => r.json()),
       fetch(`/api/team?id=${fx.awayId}`).then(r => r.json()),
+      fx.competitionId
+        ? fetch(`/api/standings?competition=${fx.competitionId}`).then(r => r.json()).catch(() => ({ positions: {}, total: 0 }))
+        : Promise.resolve({ positions: {}, total: 0 }),
     ]);
     const home = (hRes.results || []).slice(0, WINDOW);
     const away = (aRes.results || []).slice(0, WINDOW);
@@ -513,29 +538,47 @@ async function showFixture(fx) {
         ? 'No recent form data yet — World Cup reads fill in once the group games kick off (11 June).'
         : 'Not enough recent results for one of these teams.');
     }
-    renderFixture(fx, home, away);
+    // league position only counts in a real league table (≥10 teams) — skip for WC groups/knockouts
+    const pos = standings || { positions: {}, total: 0 };
+    const positions = (pos.total >= 10 && pos.positions[fx.homeId] && pos.positions[fx.awayId])
+      ? { homePos: pos.positions[fx.homeId], awayPos: pos.positions[fx.awayId], total: pos.total }
+      : null;
+    renderFixture(fx, home, away, positions);
   } catch (e) {
     resultsEl.innerHTML = `<p class="note">Couldn't load that one: ${e.message}</p>`;
   }
 }
 
+const ord = n => { const s = ['th','st','nd','rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
+
 // draws everything from two teams' last-WINDOW result arrays
-function renderFixture(fx, home, away) {
+function renderFixture(fx, home, away, positions) {
     const tag = `${fx.home} v ${fx.away}`;
     const hasHT = home.some(m => m.htGf != null) && away.some(m => m.htGf != null);
     const scoreTest = m => m.gf > 0;
     const cleanTest = m => m.ga === 0;
 
-    /* ---- WHO WINS? ---- */
+    /* ---- WHO WINS? (recent form blended with league position) ---- */
     const winTest = m => m.gf > m.ga;
     const hWin = breakdown(home, winTest), aWin = breakdown(away, winTest);
+    const formEdge = hWin.rate - aWin.rate;              // + = home stronger on form
+    let posEdge = 0, posBit = '';
+    if (positions) {
+      posEdge = (positions.awayPos - positions.homePos) / positions.total * 100; // + = home higher up
+      posBit = ` ${fx.home} sit <b>${ord(positions.homePos)}</b> to ${fx.away}'s <b>${ord(positions.awayPos)}</b> in the table.`;
+    }
+    const edge = positions ? (formEdge * 0.5 + posEdge * 0.5) : formEdge;
     let wLean;
-    if (hWin.rate - aWin.rate >= 20)
-      wLean = `<b>${fx.home}</b> have the stronger recent record — the lean is towards a home win.`;
-    else if (aWin.rate - hWin.rate >= 20)
-      wLean = `<b>${fx.away}</b> have the stronger recent record — the lean is towards an away win.`;
-    else
-      wLean = `Too close to call on form — a draw or either side winning all look live. The draw is often the value when two teams are this even.`;
+    if (edge >= 20)
+      wLean = `The lean is towards a <b>home win</b> — ${fx.home} come out ahead on form${positions ? ' and league position' : ''}.${posBit}`;
+    else if (edge <= -20)
+      wLean = `The lean is towards an <b>away win</b> — ${fx.away} come out ahead on form${positions ? ' and league position' : ''}.${posBit}`;
+    else if (positions && Math.sign(formEdge) !== Math.sign(posEdge) && Math.abs(formEdge) >= 25 && Math.abs(posEdge) >= 25) {
+      const formFav = formEdge > 0 ? fx.home : fx.away;
+      const tableFav = posEdge > 0 ? fx.home : fx.away;
+      wLean = `Genuinely hard to call — recent form favours <b>${formFav}</b>, but the table favours <b>${tableFav}</b>.${posBit} A hot streak running into a stronger side on paper.`;
+    } else
+      wLean = `Too close to call — the two are well matched${positions ? ' on form and in the table' : ' on form'}, so a draw or either win all look live.${posBit}`;
     const whoWins = compareCard('Who wins?', 'win', fx.home, home, fx.away, away, winTest, wLean, 'won', 'didn\u2019t');
 
     /* ---- AHEAD AT HALF-TIME ---- */
@@ -570,12 +613,12 @@ function renderFixture(fx, home, away) {
       angles.push(`<b>${fx.away}</b> have scored in ${aScore}% of games, up against a <b>${fx.home}</b> side keeping only ${hClean}% clean — the visitors could trouble this defence.`);
     const angleHtml = angles.length ? `<div class="angle">${angles.join(' ')}</div>` : '';
 
-    /* ---- EACH TEAM ---- */
+    /* ---- EACH TEAM (opponent-aware) ---- */
     const da = [
-      teamCard(`${fx.home} to score`,    'score', home, scoreTest, 'Reliable in front of goal lately.', 'Blunt going forward lately.', 'scored', 'blank', fx.home, tag),
-      teamCard(`${fx.away} to score`,    'score', away, scoreTest, 'Reliable in front of goal lately.', 'Blunt going forward lately.', 'scored', 'blank', fx.away, tag),
-      teamCard(`${fx.home} clean sheet`, 'clean', home, cleanTest, 'Solid at the back lately.',          'Leaky lately.',               'kept',   'conceded', fx.home, tag),
-      teamCard(`${fx.away} clean sheet`, 'clean', away, cleanTest, 'Solid at the back lately.',          'Leaky lately.',               'kept',   'conceded', fx.away, tag),
+      temperedCard(`${fx.home} to score`,    'score', home, scoreTest, 100 - aClean, `${fx.away} concede in ${100 - aClean}%`, 'Reliable in front of goal.', 'Blunt going forward lately.', 'scored', 'blank', fx.home, tag),
+      temperedCard(`${fx.away} to score`,    'score', away, scoreTest, 100 - hClean, `${fx.home} concede in ${100 - hClean}%`, 'Reliable in front of goal.', 'Blunt going forward lately.', 'scored', 'blank', fx.away, tag),
+      temperedCard(`${fx.home} clean sheet`, 'clean', home, cleanTest, 100 - aScore, `${fx.away} fail to score in ${100 - aScore}%`, 'Solid at the back.', 'Leaky lately.', 'kept', 'conceded', fx.home, tag),
+      temperedCard(`${fx.away} clean sheet`, 'clean', away, cleanTest, 100 - hScore, `${fx.home} fail to score in ${100 - hScore}%`, 'Solid at the back.', 'Leaky lately.', 'kept', 'conceded', fx.away, tag),
     ];
 
     const badges = g => form(g).map(r => `<span class="badge ${r}">${r}</span>`).join('');
@@ -610,7 +653,7 @@ const DEMO = {
 };
 function showDemo() {
   document.querySelectorAll('.fixture-btn').forEach(b => b.classList.remove('active'));
-  renderFixture(DEMO.fx, DEMO.home, DEMO.away);
+  renderFixture(DEMO.fx, DEMO.home, DEMO.away, { homePos: 2, awayPos: 14, total: 20 });
 }
 
 const demoBtn = document.createElement('button');
