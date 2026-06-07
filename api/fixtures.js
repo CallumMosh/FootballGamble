@@ -56,6 +56,8 @@ export default async function handler(req, res) {
         date: m.utcDate,
         home: m.homeTeam?.shortName || m.homeTeam?.name || 'Home',
         away: m.awayTeam?.shortName || m.awayTeam?.name || 'Away',
+        crest: m.homeTeam?.crest || '',
+        awayCrest: m.awayTeam?.crest || '',
         homeId: m.homeTeam?.id,
         awayId: m.awayTeam?.id,
       }))
