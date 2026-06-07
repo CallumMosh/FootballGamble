@@ -519,16 +519,32 @@ async function loadFixtures() {
   } catch (e) { noteEl.textContent = `Couldn't load fixtures: ${e.message}`; }
 }
 
+// per-session caches — browsing fixtures shouldn't re-fetch the same teams/tables
+const teamCache = {};
+const standingsCache = {};
+async function getTeam(id) {
+  if (teamCache[id]) return teamCache[id];
+  const r = await fetchJson(`/api/team?id=${id}`);
+  teamCache[id] = r;
+  return r;
+}
+async function getStandings(cid) {
+  if (standingsCache[cid]) return standingsCache[cid];
+  try {
+    const r = await fetchJson(`/api/standings?competition=${cid}`);
+    standingsCache[cid] = r;
+    return r;
+  } catch (e) { return { positions: {}, total: 0 }; }
+}
+
 async function showFixture(fx) {
   resultsEl.classList.remove('hidden');
   resultsEl.innerHTML = `<p class="note">Crunching recent form…</p>`;
   try {
     const [hRes, aRes, standings] = await Promise.all([
-      fetch(`/api/team?id=${fx.homeId}`).then(r => r.json()),
-      fetch(`/api/team?id=${fx.awayId}`).then(r => r.json()),
-      fx.competitionId
-        ? fetch(`/api/standings?competition=${fx.competitionId}`).then(r => r.json()).catch(() => ({ positions: {}, total: 0 }))
-        : Promise.resolve({ positions: {}, total: 0 }),
+      getTeam(fx.homeId),
+      getTeam(fx.awayId),
+      fx.competitionId ? getStandings(fx.competitionId) : Promise.resolve({ positions: {}, total: 0 }),
     ]);
     const home = (hRes.results || []).slice(0, WINDOW);
     const away = (aRes.results || []).slice(0, WINDOW);
