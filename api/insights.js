@@ -11,8 +11,8 @@ const PRIORITY = [
   [2002, 'Bundesliga'], [2015, 'Ligue 1'],
 ];
 const WINDOW = 6;
-const MAX_STANDINGS = 4; // how many competitions to check per refresh
-const MAX_TEAMS = 3;     // how many teams to backtest
+const MAX_STANDINGS = 3; // how many competitions to check per refresh
+const MAX_TEAMS = 2;     // how many teams to backtest
 let cache = { at: 0, data: null, ttl: 0 };
 const FULL_MIN = 180, EMPTY_MIN = 8;
 
