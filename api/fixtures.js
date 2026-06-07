@@ -52,6 +52,7 @@ export default async function handler(req, res) {
       .map(m => ({
         id: String(m.id),
         league: m.competition?.name || LEAGUE_IDS[m.competition?.id] || 'Football',
+        competitionId: m.competition?.id,
         date: m.utcDate,
         home: m.homeTeam?.shortName || m.homeTeam?.name || 'Home',
         away: m.awayTeam?.shortName || m.awayTeam?.name || 'Away',
