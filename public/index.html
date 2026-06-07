@@ -369,11 +369,13 @@ function renderTrack(d) {
     return;
   }
   const t = d.track, ly = t.bands.leansYes;
+  const SMALL = 20; // below this, flag the market as a thin sample
   const bandRow = (name, b, desc) => b.n
-    ? `<div class="dash-item"><span class="nm">${name}<small>${desc}</small></span>
-       <span class="st">${b.rate}% · ${b.landed}/${b.n}</span></div>` : '';
-  const mkRow = m => `<div class="dash-item"><span class="nm">${m.label}</span>
-    <span class="st">${m.rate}% · ${m.landed}/${m.n}</span></div>`;
+    ? `<div class="dash-item"><span class="nm">${name}<small>${desc} · ${b.landed} of ${b.n}</small></span>
+       <span class="st">${b.rate}%</span></div>` : '';
+  const mkRow = m => `<div class="dash-item">
+    <span class="nm">${m.label}<small>${m.landed} of ${m.n} games${m.n < SMALL ? ' · small sample' : ''}</small></span>
+    <span class="st"${m.n < SMALL ? ' style="color:var(--meh)"' : ''}>${m.rate}%</span></div>`;
   const exRow = e => `<div class="dash-item">
     <span class="nm">${e.team} ${e.label.toLowerCase()}<small>vs ${e.opp} · read ${e.rate}%</small></span>
     <span class="st" style="color:${e.hit ? 'var(--good)' : 'var(--bad)'}">${e.hit ? '✓ landed' : '✗ missed'}</span></div>`;
@@ -382,6 +384,7 @@ function renderTrack(d) {
       ${t.matchesAnalysed} games across ${t.teamsUsed} ${t.league} teams.</div>
     <div class="track-head">When the read said <b>“leans yes”</b>, the outcome actually happened
       <b>${ly.rate}%</b> of the time <span>(${ly.landed} of ${ly.n} calls)</span></div>
+    <div class="sub" style="margin-top:-6px;margin-bottom:16px">This pools every call, so markets we read more often weigh more — it won't match simply averaging the per-market figures below. Easy markets like “to score” naturally sit high; the real signal is that “leans yes” lands more than “avoid”.</div>
     <div class="dash-grid">
       <div class="dash-col"><div class="h">Outcome rate by call type</div>
         ${bandRow('Leans yes', t.bands.leansYes, 'we backed it')}
