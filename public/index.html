@@ -346,7 +346,9 @@ function renderDash(d) {
   const dash = document.getElementById('dash');
   const shell = body => { dash.innerHTML = `<h3>Today's best angles</h3>${body}`; dash.style.display = 'block'; };
   if (!d || d.dashEmpty || (!d.dashboard.attacks.length && !d.dashboard.defences.length)) {
-    shell(`<div class="sub">No in-season standings to rank yet — the European leagues are between seasons and the World Cup hasn't kicked off. This fills in automatically once games are played.</div>`);
+    shell(`<div class="sub">${d && d.partial
+      ? 'Loading today’s angles… the data feed was briefly busy, this will fill in shortly.'
+      : 'No in-season standings to rank yet — the European leagues are between seasons and the World Cup hasn\'t kicked off. This fills in automatically once games are played.'}</div>`);
     return;
   }
   const col = (title, items) => items.length ? `<div class="dash-col"><div class="h">${title}</div>` +
@@ -366,7 +368,9 @@ function renderTrack(d) {
   const el = document.getElementById('track');
   const shell = body => { el.innerHTML = `<h3>Track record</h3>${body}`; el.style.display = 'block'; };
   if (!d || d.trackEmpty || !d.track) {
-    shell(`<div class="sub">Not enough in-season games to backtest yet — this builds itself once matches are played.</div>`);
+    shell(`<div class="sub">${d && d.partial
+      ? 'Building today’s record… the data feed was briefly busy, this will fill in shortly.'
+      : 'Not enough in-season games to backtest yet — this builds itself once matches are played.'}</div>`);
     return;
   }
   const t = d.track, ly = t.bands.leansYes;
@@ -398,14 +402,20 @@ function renderTrack(d) {
 }
 
 // one call powers both panels (dashboard + track record)
+let insightsRetried = false;
 async function loadInsights() {
   try {
     const d = await fetchJson('/api/insights');
     renderDash(d);
     renderTrack(d);
+    if (d && d.partial && !insightsRetried) {
+      insightsRetried = true;                 // the feed was briefly busy — rebuild once, shortly
+      setTimeout(loadInsights, 9000);
+    }
   } catch (e) {
     renderDash(null);
     renderTrack(null);
+    if (!insightsRetried) { insightsRetried = true; setTimeout(loadInsights, 9000); }
   }
 }
 
