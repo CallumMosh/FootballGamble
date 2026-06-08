@@ -33,9 +33,15 @@ const MARKETS = {
   htlead: { label: 'Ahead at half-time', test: m => m.htGf != null && m.htGf > m.htGa },
 };
 
-async function getJson(url, key) {
-  const r = await fetch(url, { headers: { 'X-Auth-Token': key } });
-  return r.ok ? r.json() : null;
+let anyFail = false; // set true if a fetch ultimately failed (e.g. rate limited) this build
+async function getJson(url, key, tries = 2) {
+  for (let i = 0; i < tries; i++) {
+    const r = await fetch(url, { headers: { 'X-Auth-Token': key } });
+    if (r.status === 429 && i < tries - 1) { await new Promise(s => setTimeout(s, 3000)); continue; }
+    if (r.ok) return r.json();
+    if (r.status === 429) anyFail = true; // still limited after the retry
+    return null;
+  }
 }
 function toRows(id, matches) {
   return (matches || [])
@@ -68,6 +74,7 @@ export default async function handler(req, res) {
   const key = process.env.FOOTBALL_DATA_KEY;
   if (!key) return res.status(500).json({ error: 'No API key set.' });
   if (cache.data && Date.now() - cache.at < cache.ttl) return res.status(200).json(cache.data);
+  anyFail = false; // fresh build
 
   try {
     const teams = [];            // for the dashboard
@@ -124,9 +131,12 @@ export default async function handler(req, res) {
       updated: new Date().toISOString(),
       dashboard, dashEmpty: teams.length === 0,
       track,     trackEmpty: !track,
+      partial: anyFail,           // a fetch was rate-limited — result may be incomplete
     };
     const isEmpty = data.dashEmpty && data.trackEmpty;
-    cache = { at: Date.now(), data, ttl: (isEmpty ? EMPTY_MIN : FULL_MIN) * 60 * 1000 };
+    // don't lock in an incomplete build; rebuild on the next load instead
+    const ttl = anyFail ? 0 : (isEmpty ? EMPTY_MIN : FULL_MIN) * 60 * 1000;
+    cache = { at: Date.now(), data, ttl };
     res.status(200).json(data);
   } catch (e) {
     res.status(500).json({ error: 'Could not load insights.' });
