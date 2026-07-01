@@ -77,6 +77,9 @@
   table.games td{padding:7px 8px;border-bottom:1px solid var(--line);font-family:'Space Mono',monospace}
   table.games td.match{font-family:'Archivo',sans-serif}
   table.games td.match b{color:#fff}
+  .h2h-table td{vertical-align:top}
+  .h2h-date{font-family:'Archivo',sans-serif !important;color:var(--muted);font-size:12px;white-space:nowrap;width:1%}
+  .h2h-comp{display:block;font-size:11px;color:var(--muted);opacity:.75}
   table.games tr:last-child td{border-bottom:none}
   table.games .y{color:var(--good);font-weight:700}
   table.games .n{color:var(--bad);font-weight:700}
@@ -185,6 +188,7 @@ const GLOSS = {
   btts: "Both Teams To Score: both teams find the net at least once in the same match.",
   score:"To Score: the team scores at least one goal — adjusted for how often the opponent concedes.",
   clean:"Clean Sheet: the team concedes zero goals — adjusted for how often the opponent scores.",
+  h2h:  "Head to Head: how these two specific teams have fared against each other in past meetings, across any competition — not each team's general form.",
 };
 const infoIcon = key => GLOSS[key] ? `<span class="info" tabindex="0" data-tip="${GLOSS[key]}">i</span>` : '';
 
@@ -548,21 +552,51 @@ async function getStandings(cid) {
   } catch (e) { return { positions: {}, total: 0 }; }
 }
 
+// recent form for a fixture, pulled from the competition feed (works for national
+// teams the free tier won't serve per-team). Falls back to per-team if no competition.
+const formCache = {};
+async function getForm(fx) {
+  const k = `${fx.competitionId}:${fx.homeId}:${fx.awayId}`;
+  if (formCache[k]) return formCache[k];
+  let out;
+  if (fx.competitionId) {
+    const r = await fetchJson(`/api/compteams?competition=${fx.competitionId}&home=${fx.homeId}&away=${fx.awayId}`);
+    out = { home: r.home || [], away: r.away || [] };
+  } else {
+    const [h, a] = await Promise.all([getTeam(fx.homeId), getTeam(fx.awayId)]);
+    out = { home: h.results || [], away: a.results || [] };
+  }
+  formCache[k] = out;
+  return out;
+}
+
+// head-to-head history for a fixture — a bonus section, never blocks the core reads if it fails
+const h2hCache = {};
+async function getH2H(fx) {
+  if (!fx.id) return null;
+  if (h2hCache[fx.id]) return h2hCache[fx.id];
+  try {
+    const r = await fetchJson(`/api/h2h?match=${fx.id}`);
+    h2hCache[fx.id] = r;
+    return r;
+  } catch (e) { return null; }
+}
+
 async function showFixture(fx) {
   resultsEl.classList.remove('hidden');
   resultsEl.innerHTML = `<p class="note">Crunching recent form…</p>`;
   try {
-    const [hRes, aRes, standings] = await Promise.all([
-      getTeam(fx.homeId),
-      getTeam(fx.awayId),
+    const [form, standings, h2h] = await Promise.all([
+      getForm(fx),
       fx.competitionId ? getStandings(fx.competitionId) : Promise.resolve({ positions: {}, total: 0 }),
+      getH2H(fx),
     ]);
-    const home = (hRes.results || []).slice(0, WINDOW);
-    const away = (aRes.results || []).slice(0, WINDOW);
+    const home = (form.home || []).slice(0, WINDOW);
+    const away = (form.away || []).slice(0, WINDOW);
     if (!home.length || !away.length) {
       const wc = /world cup/i.test(fx.league);
       throw new Error(wc
-        ? 'No recent form data yet — World Cup reads fill in once the group games kick off (11 June).'
+        ? 'No tournament games to read yet — World Cup reads fill in once both sides have played a group game.'
         : 'Not enough recent results for one of these teams.');
     }
     // league position only counts in a real league table (≥10 teams) — skip for WC groups/knockouts
@@ -570,7 +604,7 @@ async function showFixture(fx) {
     const positions = (pos.total >= 10 && pos.positions[fx.homeId] && pos.positions[fx.awayId])
       ? { homePos: pos.positions[fx.homeId], awayPos: pos.positions[fx.awayId], total: pos.total }
       : null;
-    renderFixture(fx, home, away, positions);
+    renderFixture(fx, home, away, positions, h2h);
   } catch (e) {
     resultsEl.innerHTML = `<p class="note">Couldn't load that one: ${e.message}</p>`;
   }
@@ -579,11 +613,37 @@ async function showFixture(fx) {
 const ord = n => { const s = ['th','st','nd','rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
 
 // draws everything from two teams' last-WINDOW result arrays
-function renderFixture(fx, home, away, positions) {
+function renderFixture(fx, home, away, positions, h2h) {
     const tag = `${fx.home} v ${fx.away}`;
     const hasHT = home.some(m => m.htGf != null) && away.some(m => m.htGf != null);
     const scoreTest = m => m.gf > 0;
     const cleanTest = m => m.ga === 0;
+
+    /* ---- HEAD TO HEAD (last meetings between these two, any competition) ---- */
+    let h2hCard = '';
+    if (h2h && !h2h.empty && h2h.matches.length) {
+      const rows = h2h.matches.map(m => {
+        const d = new Date(m.date);
+        const when = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        const homeIsFxHome = m.home === fx.home;
+        return `<tr>
+          <td class="h2h-date">${when}<span class="h2h-comp">${m.competition}</span></td>
+          <td class="match"><b>${m.home}</b> ${m.hg}\u2013${m.ag} ${m.away}</td>
+        </tr>`;
+      }).join('');
+      const w = h2h.homeWins, l = h2h.awayWins, d = h2h.draws;
+      const record = (w != null && l != null && d != null)
+        ? `<div class="working" style="margin-bottom:12px">Last ${h2h.total} meetings: <b>${fx.home} won ${w}</b>, <b>${fx.away} won ${l}</b>, drawn ${d}.</div>`
+        : '';
+      h2hCard = `<div class="market">
+        <div class="market-top"><span class="market-name">Head to head${infoIcon('h2h')}</span></div>
+        ${record}
+        <table class="games h2h-table"><tbody>${rows}</tbody></table>
+      </div>`;
+    } else if (h2h && h2h.empty) {
+      h2hCard = `<div class="market"><div class="market-top"><span class="market-name">Head to head${infoIcon('h2h')}</span></div>
+        <div class="working">No previous meetings in our data — first time these two have met, or it's outside our records.</div></div>`;
+    }
 
     /* ---- WHO WINS? (recent form blended with league position) ---- */
     const winTest = m => m.gf > m.ga;
@@ -659,6 +719,7 @@ function renderFixture(fx, home, away, positions) {
         <div class="form-team"><span class="label">${fx.away} form</span>${badges(away)}</div>
       </div>
       <div class="section-h">Result</div>${whoWins}
+      ${h2hCard ? `<div class="section-h">Head to head</div>${h2hCard}` : ''}
       ${firstHalf ? `<div class="section-h">First half</div>${firstHalf}` : ''}
       <div class="section-h">Goals</div>${goals.join('')}
       <div class="section-h">Each team</div>${angleHtml}${da.join('')}`;
@@ -677,10 +738,15 @@ const DEMO = {
   away: [ {gf:0,ga:0,venue:'A',htGf:0,htGa:0,opponent:'Chelsea'},{gf:1,ga:0,venue:'H',htGf:0,htGa:0,opponent:'Liverpool'},
           {gf:0,ga:1,venue:'A',htGf:0,htGa:1,opponent:'Spurs'},{gf:0,ga:0,venue:'H',htGf:0,htGa:0,opponent:'Fulham'},
           {gf:1,ga:1,venue:'A',htGf:0,htGa:1,opponent:'Wolves'},{gf:0,ga:0,venue:'A',htGf:0,htGa:0,opponent:'Brighton'} ],
+  h2h: { total: 3, homeWins: 2, awayWins: 0, draws: 1, empty: false, matches: [
+    { date:'2025-11-02T15:00:00Z', home:'Demo United', away:'Sample City', hg:2, ag:1, competition:'Demo League' },
+    { date:'2025-03-15T15:00:00Z', home:'Sample City', away:'Demo United', hg:1, ag:1, competition:'Demo League' },
+    { date:'2024-09-21T15:00:00Z', home:'Demo United', away:'Sample City', hg:3, ag:0, competition:'Demo Cup' },
+  ] },
 };
 function showDemo() {
   document.querySelectorAll('.fixture-btn').forEach(b => b.classList.remove('active'));
-  renderFixture(DEMO.fx, DEMO.home, DEMO.away, { homePos: 2, awayPos: 14, total: 20 });
+  renderFixture(DEMO.fx, DEMO.home, DEMO.away, { homePos: 2, awayPos: 14, total: 20 }, DEMO.h2h);
 }
 
 const demoBtn = document.createElement('button');
