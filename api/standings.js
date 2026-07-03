@@ -1,7 +1,10 @@
 // api/standings.js
-// Returns each team's league position for one competition, e.g. /api/standings?competition=2021
-// Used by the "Who wins?" read to weigh long-term quality (the table) alongside
-// recent form. Cached per competition (tables move slowly) to spare the rate limit.
+// Returns each team's league position (used by the "Who wins?" read) AND the
+// full table rows (used by the League Tables section), for one competition:
+// /api/standings?competition=2021
+// Competitions with multiple groups (e.g. a World Cup group stage) come back
+// as separate groups rather than merged into one misleading combined table.
+// Cached per competition (tables move slowly) to spare the rate limit.
 
 const cache = {}; // { competitionId: { at, data } }
 const CACHE_MINUTES = 120;
@@ -22,22 +25,40 @@ export default async function handler(req, res) {
     const r = await fetch(`https://api.football-data.org/v4/competitions/${id}/standings`, {
       headers: { 'X-Auth-Token': key },
     });
-    if (!r.ok) { return res.status(200).json({ positions: {}, total: 0 }); } // graceful: no table
-    const j = await r.json();
+    if (!r.ok) { return res.status(200).json({ positions: {}, total: 0, groups: [] }); } // graceful: no table
 
+    const j = await r.json();
     const positions = {};
     let total = 0;
+    const groups = [];
+
     (j.standings || []).forEach(block => {
       if (block.type !== 'TOTAL') return;
       const table = block.table || [];
-      total = Math.max(total, table.length);          // largest table = league size
-      table.forEach(row => { if (row.team?.id) positions[row.team.id] = row.position; });
+      total = Math.max(total, table.length); // largest single table = league size
+      const rows = table.map(row => {
+        if (row.team?.id) positions[row.team.id] = row.position;
+        return {
+          position: row.position,
+          team: row.team?.shortName || row.team?.name || 'Team',
+          crest: row.team?.crest || '',
+          played: row.playedGames || 0,
+          won: row.won || 0,
+          draw: row.draw || 0,
+          lost: row.lost || 0,
+          gf: row.goalsFor || 0,
+          ga: row.goalsAgainst || 0,
+          gd: row.goalDifference ?? ((row.goalsFor || 0) - (row.goalsAgainst || 0)),
+          points: row.points || 0,
+        };
+      });
+      groups.push({ name: block.group || null, rows }); // group stages get separate tables
     });
 
-    const data = { positions, total };
+    const data = { positions, total, groups };
     cache[id] = { at: Date.now(), data };
     res.status(200).json(data);
   } catch (e) {
-    res.status(200).json({ positions: {}, total: 0 });
+    res.status(200).json({ positions: {}, total: 0, groups: [] });
   }
 }
