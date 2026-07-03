@@ -36,11 +36,14 @@
   .fixture-teams{font-weight:600;font-size:16px}
   .fixture-teams .vs{color:var(--muted);font-weight:400;margin:0 8px}
   .crest{width:18px;height:18px;object-fit:contain;vertical-align:-3px;margin-right:7px}
+  .fixture-right{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
+  .fixture-time{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);white-space:nowrap}
   .fixture-league{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);
     border:1px solid var(--line);border-radius:999px;padding:3px 10px;white-space:nowrap}
   .note{color:var(--muted);font-size:13px;padding:14px 0}
   .results{margin-top:36px}.results.hidden{display:none}
   .matchup{font-family:'Montserrat',sans-serif;font-weight:700;text-transform:uppercase;font-size:clamp(22px,5vw,32px);letter-spacing:.5px;margin-bottom:4px}
+  .kickoff{font-family:'Space Mono',monospace;font-size:13px;color:var(--pitch);margin-bottom:10px}
   .matchup .at{color:var(--pitch)}
   .disclaimer{font-size:13px;color:var(--muted);border-left:2px solid var(--line);padding-left:12px;margin:14px 0 4px}
   .market{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-bottom:14px}
@@ -115,6 +118,22 @@
   .dash-col .h{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--pitch);margin-bottom:8px}
   .dash-item{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line)}
   .dash-item:last-child{border-bottom:none}
+  .table-pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+  .table-pill{all:unset;cursor:pointer;font-family:'Space Mono',monospace;font-size:12px;color:var(--muted);
+    border:1px solid var(--line);border-radius:999px;padding:6px 14px;transition:border-color .15s,color .15s,background .15s}
+  .table-pill:hover{border-color:var(--pitch);color:#fff}
+  .table-pill.active{border-color:var(--pitch);background:rgba(182,255,61,.1);color:var(--pitch)}
+  .table-group-name{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--pitch);margin:14px 0 8px}
+  .table-group-name:first-child{margin-top:0}
+  table.league-table{width:100%;border-collapse:collapse;font-size:13px}
+  table.league-table th{text-align:left;font-weight:600;color:var(--muted);font-size:10px;text-transform:uppercase;
+    letter-spacing:.5px;padding:6px 6px;border-bottom:1px solid var(--line)}
+  table.league-table th.num,table.league-table td.num{text-align:center}
+  table.league-table td{padding:7px 6px;border-bottom:1px solid var(--line);font-family:'Space Mono',monospace}
+  table.league-table td.pos{color:var(--muted);width:1%}
+  table.league-table td.team{font-family:'Archivo',sans-serif;font-weight:600;color:#fff;white-space:nowrap}
+  table.league-table td.pts{font-weight:700;color:var(--pitch)}
+  table.league-table tr:last-child td{border-bottom:none}
   .dash-item .nm{font-weight:600}.dash-item .nm small{color:var(--muted);font-weight:400;margin-left:6px}
   .dash-item .st{font-family:'Space Mono',monospace;color:var(--muted);white-space:nowrap}
   .track-head{font-size:15px;line-height:1.5;background:rgba(182,255,61,.06);border:1px solid var(--line);
@@ -153,6 +172,7 @@
 
   <section class="dash" id="dash" style="display:none"></section>
   <section class="dash" id="track" style="display:none"></section>
+  <section class="dash" id="tables"></section>
 
   <div class="picker-label">Upcoming fixtures</div>
   <div class="fixtures" id="fixtures"></div>
@@ -174,6 +194,22 @@
    ============================================================ */
 const WINDOW = 6;                 // one sample size, used everywhere
 const pct = (n, t) => t ? Math.round((n / t) * 100) : 0;
+
+// UK kick-off time — Europe/London handles BST/GMT automatically, no manual offset needed
+function ukTimeShort(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const day = d.toLocaleDateString('en-GB', { timeZone: 'Europe/London', weekday: 'short', day: 'numeric', month: 'short' });
+  const time = d.toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', hour12: false });
+  return `${day}, ${time}`;
+}
+function ukTimeFull(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const day = d.toLocaleDateString('en-GB', { timeZone: 'Europe/London', weekday: 'long', day: 'numeric', month: 'long' });
+  const time = d.toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', hour12: false });
+  return `${day}, ${time} (UK time)`;
+}
 const blend = (a, b) => Math.round((a + b) / 2);
 const colour = lvl => lvl==='good'?'var(--good)':lvl==='meh'?'var(--meh)':'var(--bad)';
 const form = g => g.slice(0, 5).map(m => m.gf > m.ga ? 'W' : m.gf < m.ga ? 'L' : 'D');
@@ -405,6 +441,63 @@ function renderTrack(d) {
   el.style.display = 'block';
 }
 
+/* ============================================================
+   LEAGUE TABLES  — pills render instantly (no fetch); a table only
+   loads when clicked, reusing the same cached getStandings() call
+   the "Who wins?" position-weighting already uses.
+   ============================================================ */
+const TABLE_LEAGUES = [
+  [2021, 'Premier League'], [2016, 'Championship'], [2001, 'Champions League'],
+  [2014, 'La Liga'], [2019, 'Serie A'], [2002, 'Bundesliga'], [2015, 'Ligue 1'],
+  [2013, 'Brasileirão'], [2000, 'World Cup'],
+];
+let activeTableCid = null;
+
+function renderTablePills() {
+  const el = document.getElementById('tables');
+  const pills = TABLE_LEAGUES.map(([cid, name]) =>
+    `<button class="table-pill${cid === activeTableCid ? ' active' : ''}" data-cid="${cid}" data-name="${name}">${name}</button>`).join('');
+  el.innerHTML = `<h3>League tables</h3>
+    <div class="sub">Pick a league to see its current table.</div>
+    <div class="table-pills">${pills}</div>
+    <div id="table-body"><div class="sub">Tap a league above to load its table.</div></div>`;
+  el.querySelectorAll('.table-pill').forEach(btn => {
+    btn.onclick = () => loadTable(Number(btn.dataset.cid), btn.dataset.name);
+  });
+}
+
+function tableRows(rows) {
+  return rows.map(r => `<tr>
+    <td class="pos">${r.position}</td>
+    <td class="team">${r.crest ? `<img class="crest" src="${r.crest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${r.team}</td>
+    <td class="num">${r.played}</td><td class="num">${r.won}</td><td class="num">${r.draw}</td><td class="num">${r.lost}</td>
+    <td class="num">${r.gd > 0 ? '+' : ''}${r.gd}</td>
+    <td class="num pts">${r.points}</td></tr>`).join('');
+}
+
+async function loadTable(cid, name) {
+  activeTableCid = cid;
+  document.querySelectorAll('.table-pill').forEach(b => b.classList.toggle('active', Number(b.dataset.cid) === cid));
+  const body = document.getElementById('table-body');
+  body.innerHTML = `<p class="note">Loading ${name} table…</p>`;
+  try {
+    const d = await getStandings(cid);
+    const groups = (d && d.groups) ? d.groups.filter(g => g.rows.length) : [];
+    if (!groups.length) {
+      body.innerHTML = `<div class="sub">No table available for ${name} right now — this fills in automatically once the season or group stage gets underway.</div>`;
+      return;
+    }
+    body.innerHTML = groups.map(g => `
+      ${g.name ? `<div class="table-group-name">${g.name}</div>` : ''}
+      <table class="league-table"><thead><tr>
+        <th></th><th>Team</th><th class="num">P</th><th class="num">W</th><th class="num">D</th><th class="num">L</th>
+        <th class="num">GD</th><th class="num">Pts</th></tr></thead>
+        <tbody>${tableRows(g.rows)}</tbody></table>`).join('');
+  } catch (e) {
+    body.innerHTML = `<div class="sub">Couldn't load the ${name} table right now — try again in a moment.</div>`;
+  }
+}
+
 // one call powers both panels (dashboard + track record)
 let insightsRetried = false;
 async function loadInsights() {
@@ -523,7 +616,7 @@ async function loadFixtures() {
       const btn = document.createElement('button');
       btn.className = 'fixture-btn';
       btn.innerHTML = `<span class="fixture-teams">${fx.crest ? `<img class="crest" src="${fx.crest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${fx.home}<span class="vs">v</span>${fx.awayCrest ? `<img class="crest" src="${fx.awayCrest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${fx.away}</span>
-                       <span class="fixture-league">${fx.league}</span>`;
+                       <span class="fixture-right"><span class="fixture-time">${ukTimeShort(fx.date)}</span><span class="fixture-league">${fx.league}</span></span>`;
       btn.onclick = () => {
         document.querySelectorAll('.fixture-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
@@ -549,7 +642,7 @@ async function getStandings(cid) {
     const r = await fetchJson(`/api/standings?competition=${cid}`);
     standingsCache[cid] = r;
     return r;
-  } catch (e) { return { positions: {}, total: 0 }; }
+  } catch (e) { return { positions: {}, total: 0, groups: [] }; }
 }
 
 // recent form for a fixture, pulled from the competition feed (works for national
@@ -712,6 +805,7 @@ function renderFixture(fx, home, away, positions, h2h) {
 
     resultsEl.innerHTML = `
       <div class="matchup">${fx.home} <span class="at">vs</span> ${fx.away}</div>
+      ${fx.date ? `<div class="kickoff">Kick-off: ${ukTimeFull(fx.date)}</div>` : ''}
       <p class="disclaimer">Based on each side's last ${WINDOW} games. Every figure lists the games behind it —
         tap “show the games” to verify. Descriptive, not a prediction — then use the odds box to test for value.</p>
       <div class="form-row">
@@ -757,6 +851,7 @@ demoBtn.innerHTML = `<span class="fixture-teams">▶ See a demo match</span>
 demoBtn.onclick = showDemo;
 
 loadFixtures();
+renderTablePills();
 setTimeout(loadInsights, 1500); // stagger: fixtures first, then the shared insights call
 fixturesEl.parentNode.insertBefore(demoBtn, noteEl.nextSibling);
 </script>
