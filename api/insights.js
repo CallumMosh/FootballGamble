@@ -7,8 +7,8 @@
 
 const PRIORITY = [
   [2013, 'Brasileirão'], [2000, 'World Cup'],
-  [2021, 'Premier League'], [2014, 'La Liga'], [2019, 'Serie A'],
-  [2002, 'Bundesliga'], [2015, 'Ligue 1'],
+  [2021, 'Premier League'], [2016, 'Championship'], [2001, 'Champions League'],
+  [2014, 'La Liga'], [2019, 'Serie A'], [2002, 'Bundesliga'], [2015, 'Ligue 1'],
 ];
 const WINDOW = 6;
 const MAX_STANDINGS = 3; // how many competitions to check per refresh
