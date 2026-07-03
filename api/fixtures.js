@@ -7,6 +7,8 @@
 
 const LEAGUE_IDS = {
   2021: 'Premier League',
+  2016: 'Championship',
+  2001: 'Champions League',
   2014: 'La Liga',
   2019: 'Serie A',
   2002: 'Bundesliga',
