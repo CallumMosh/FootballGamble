@@ -170,15 +170,16 @@
       working — built to help you avoid the daft bets, not promise you riches.</p>
   </header>
 
-  <section class="dash" id="dash" style="display:none"></section>
-  <section class="dash" id="track" style="display:none"></section>
-  <section class="dash" id="tables"></section>
-
-  <div class="picker-label">Upcoming fixtures</div>
+  <div class="picker-label" style="margin-top:8px">Upcoming fixtures</div>
   <div class="fixtures" id="fixtures"></div>
   <div class="note" id="note">Loading fixtures…</div>
 
   <section class="results hidden" id="results"></section>
+
+  <div class="picker-label">More insight</div>
+  <section class="dash" id="dash" style="display:none"></section>
+  <section class="dash" id="track" style="display:none"></section>
+  <section class="dash" id="tables"></section>
 
   <footer>
     Reads are based on <b>the last 6 games</b> only — descriptive, not a prediction model.
@@ -462,8 +463,18 @@ function renderTablePills() {
     <div class="table-pills">${pills}</div>
     <div id="table-body"><div class="sub">Tap a league above to load its table.</div></div>`;
   el.querySelectorAll('.table-pill').forEach(btn => {
-    btn.onclick = () => loadTable(Number(btn.dataset.cid), btn.dataset.name);
+    btn.onclick = () => {
+      const cid = Number(btn.dataset.cid);
+      if (cid === activeTableCid) { collapseTable(); return; } // tap the open league again to close it
+      loadTable(cid, btn.dataset.name);
+    };
   });
+}
+
+function collapseTable() {
+  activeTableCid = null;
+  document.querySelectorAll('.table-pill').forEach(b => b.classList.remove('active'));
+  document.getElementById('table-body').innerHTML = `<div class="sub">Tap a league above to load its table.</div>`;
 }
 
 function tableRows(rows) {
