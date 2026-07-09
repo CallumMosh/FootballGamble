@@ -850,39 +850,9 @@ function renderFixture(fx, home, away, positions, h2h) {
     syncSlipButtons();
 }
 
-/* ============================================================
-   DEMO MATCH — sample data, exercises every read out of season
-   ============================================================ */
-const DEMO = {
-  fx: { home:'Demo United', away:'Sample City', league:'Demo' },
-  home: [ {gf:2,ga:1,venue:'H',htGf:1,htGa:0,opponent:'Newcastle'},{gf:1,ga:0,venue:'A',htGf:1,htGa:0,opponent:'Arsenal'},
-          {gf:3,ga:1,venue:'H',htGf:2,htGa:0,opponent:'Brentford'},{gf:2,ga:1,venue:'H',htGf:1,htGa:1,opponent:'Villa'},
-          {gf:1,ga:0,venue:'A',htGf:0,htGa:0,opponent:'Man City'},{gf:2,ga:1,venue:'H',htGf:1,htGa:0,opponent:'Everton'} ],
-  away: [ {gf:0,ga:0,venue:'A',htGf:0,htGa:0,opponent:'Chelsea'},{gf:1,ga:0,venue:'H',htGf:0,htGa:0,opponent:'Liverpool'},
-          {gf:0,ga:1,venue:'A',htGf:0,htGa:1,opponent:'Spurs'},{gf:0,ga:0,venue:'H',htGf:0,htGa:0,opponent:'Fulham'},
-          {gf:1,ga:1,venue:'A',htGf:0,htGa:1,opponent:'Wolves'},{gf:0,ga:0,venue:'A',htGf:0,htGa:0,opponent:'Brighton'} ],
-  h2h: { total: 3, homeWins: 2, awayWins: 0, draws: 1, empty: false, matches: [
-    { date:'2025-11-02T15:00:00Z', home:'Demo United', away:'Sample City', hg:2, ag:1, competition:'Demo League' },
-    { date:'2025-03-15T15:00:00Z', home:'Sample City', away:'Demo United', hg:1, ag:1, competition:'Demo League' },
-    { date:'2024-09-21T15:00:00Z', home:'Demo United', away:'Sample City', hg:3, ag:0, competition:'Demo Cup' },
-  ] },
-};
-function showDemo() {
-  document.querySelectorAll('.fixture-btn').forEach(b => b.classList.remove('active'));
-  renderFixture(DEMO.fx, DEMO.home, DEMO.away, { homePos: 2, awayPos: 14, total: 20 }, DEMO.h2h);
-}
-
-const demoBtn = document.createElement('button');
-demoBtn.className = 'fixture-btn';
-demoBtn.style.borderStyle = 'dashed';
-demoBtn.innerHTML = `<span class="fixture-teams">▶ See a demo match</span>
-                     <span class="fixture-league">sample data</span>`;
-demoBtn.onclick = showDemo;
-
 loadFixtures();
 renderTablePills();
 setTimeout(loadInsights, 1500); // stagger: fixtures first, then the shared insights call
-fixturesEl.parentNode.insertBefore(demoBtn, noteEl.nextSibling);
 </script>
 </body>
 </html>
