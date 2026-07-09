@@ -139,6 +139,11 @@
   .dash-col .h{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--pitch);margin-bottom:8px}
   .dash-item{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line)}
   .dash-item:last-child{border-bottom:none}
+  .insight-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+  .insight-tab{all:unset;cursor:pointer;font-family:'Space Mono',monospace;font-size:12.5px;font-weight:700;
+    padding:8px 16px;border-radius:999px;border:1px solid var(--line);color:var(--muted);transition:border-color .15s,background .15s,color .15s}
+  .insight-tab:hover{border-color:var(--pitch);color:var(--text)}
+  .insight-tab.active{background:var(--pitch);border-color:var(--pitch);color:var(--bg)}
   .table-pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
   .table-pill{all:unset;cursor:pointer;font-family:'Space Mono',monospace;font-size:12px;color:var(--muted);
     border:1px solid var(--line);border-radius:999px;padding:6px 14px;transition:border-color .15s,color .15s,background .15s}
@@ -212,17 +217,13 @@
 
   <section id="featured" style="display:none"></section>
 
-  <section class="dash" id="tables"></section>
+  <section class="dash" id="insight"></section>
 
   <div class="picker-label" style="margin-top:8px">Upcoming fixtures</div>
   <div class="fixtures" id="fixtures"></div>
   <div class="note" id="note">Loading fixtures…</div>
 
   <section class="results hidden" id="results"></section>
-
-  <div class="picker-label">More insight</div>
-  <section class="dash" id="dash" style="display:none"></section>
-  <section class="dash" id="track" style="display:none"></section>
 
   <footer>
     Reads are based on <b>the last 6 games</b> only — descriptive, not a prediction model.
@@ -427,8 +428,8 @@ function renderSlip() {
    LEAGUE DASHBOARD  — "Today's best angles" from /api/highlights
    ============================================================ */
 function renderDash(d) {
-  const dash = document.getElementById('dash');
-  const shell = body => { dash.innerHTML = `<h3>Today's best angles</h3>${body}`; dash.style.display = 'block'; };
+  const dash = document.getElementById('pane-angles');
+  const shell = body => { dash.innerHTML = body; };
   if (!d || d.dashEmpty || (!d.dashboard.attacks.length && !d.dashboard.defences.length)) {
     shell(`<div class="sub">${d && d.partial
       ? 'Loading today’s angles… the data feed was briefly busy, this will fill in shortly.'
@@ -438,19 +439,18 @@ function renderDash(d) {
   const col = (title, items) => items.length ? `<div class="dash-col"><div class="h">${title}</div>` +
     items.map(t => `<div class="dash-item"><span class="nm">${t.name}<small>${t.league}</small></span>
       <span class="st">${t.stat}</span></div>`).join('') + `</div>` : '';
-  dash.innerHTML = `<h3>Today's best angles</h3>
+  dash.innerHTML = `
     <div class="sub">Statistical extremes from current league standings — a starting point, not a tip.</div>
     <div class="dash-grid">
       ${col('Sharpest attacks', d.dashboard.attacks)}
       ${col('Leakiest defences', d.dashboard.defences)}
       ${col('Hottest form', d.dashboard.form)}
     </div>`;
-  dash.style.display = 'block';
 }
 
 function renderTrack(d) {
-  const el = document.getElementById('track');
-  const shell = body => { el.innerHTML = `<h3>Track record</h3>${body}`; el.style.display = 'block'; };
+  const el = document.getElementById('pane-track');
+  const shell = body => { el.innerHTML = body; };
   if (!d || d.trackEmpty || !d.track) {
     shell(`<div class="sub">${d && d.partial
       ? 'Building today’s record… the data feed was briefly busy, this will fill in shortly.'
@@ -468,7 +468,7 @@ function renderTrack(d) {
   const exRow = e => `<div class="dash-item">
     <span class="nm">${e.team} ${e.label.toLowerCase()}<small>vs ${e.opp} · read ${e.rate}%</small></span>
     <span class="st" style="color:${e.hit ? 'var(--good)' : 'var(--bad)'}">${e.hit ? '✓ landed' : '✗ missed'}</span></div>`;
-  el.innerHTML = `<h3>Track record</h3>
+  el.innerHTML = `
     <div class="sub">Every past game replayed using only the 6 games before it — no hindsight, losses included.
       ${t.matchesAnalysed} games across ${t.teamsUsed} ${t.league} teams.</div>
     <div class="track-head">When the read said <b>“leans yes”</b>, the outcome actually happened
@@ -482,7 +482,6 @@ function renderTrack(d) {
       <div class="dash-col"><div class="h">“Leans yes” by market</div>${t.markets.map(mkRow).join('')}</div>
       <div class="dash-col"><div class="h">Recent calls</div>${t.examples.map(exRow).join('')}</div>
     </div>`;
-  el.style.display = 'block';
 }
 
 /* ============================================================
@@ -497,12 +496,33 @@ const TABLE_LEAGUES = [
 ];
 let activeTableCid = null;
 
+// one panel, three tabs — replaces having League tables, Best angles, and Track
+// record as three separate boxes scattered around the page
+function initInsightPanel() {
+  const el = document.getElementById('insight');
+  el.innerHTML = `
+    <div class="insight-tabs">
+      <button class="insight-tab active" data-tab="angles">Best angles</button>
+      <button class="insight-tab" data-tab="track">Track record</button>
+      <button class="insight-tab" data-tab="tables">League tables</button>
+    </div>
+    <div class="insight-pane" id="pane-angles"><div class="sub">Loading…</div></div>
+    <div class="insight-pane" id="pane-track" style="display:none"><div class="sub">Loading…</div></div>
+    <div class="insight-pane" id="pane-tables" style="display:none"></div>`;
+  el.querySelectorAll('.insight-tab').forEach(btn => { btn.onclick = () => showInsightTab(btn.dataset.tab); });
+  renderTablePills(); // pills render instantly, no fetch needed
+}
+
+function showInsightTab(tab) {
+  document.querySelectorAll('.insight-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.insight-pane').forEach(p => { p.style.display = (p.id === 'pane-' + tab) ? 'block' : 'none'; });
+}
+
 function renderTablePills() {
-  const el = document.getElementById('tables');
+  const el = document.getElementById('pane-tables');
   const pills = TABLE_LEAGUES.map(([cid, name]) =>
     `<button class="table-pill${cid === activeTableCid ? ' active' : ''}" data-cid="${cid}" data-name="${name}">${name}</button>`).join('');
-  el.innerHTML = `<h3>League tables</h3>
-    <div class="sub">Pick a league to see its current table.</div>
+  el.innerHTML = `<div class="sub">Pick a league to see its current table.</div>
     <div class="table-pills">${pills}</div>
     <div id="table-body"><div class="sub">Tap a league above to load its table.</div></div>`;
   el.querySelectorAll('.table-pill').forEach(btn => {
@@ -967,7 +987,7 @@ function renderFixture(fx, home, away, positions, h2h) {
 }
 
 loadFixtures();
-renderTablePills();
+initInsightPanel();
 setTimeout(loadInsights, 1500); // stagger: fixtures first, then the shared insights call
 </script>
 </body>
