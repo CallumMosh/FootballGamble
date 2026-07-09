@@ -747,15 +747,16 @@ function renderFixture(fx, home, away, positions, h2h) {
       const rows = h2h.matches.map(m => {
         const d = new Date(m.date);
         const when = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-        const homeIsFxHome = m.home === fx.home;
         return `<tr>
           <td class="h2h-date">${when}<span class="h2h-comp">${m.competition}</span></td>
           <td class="match"><b>${m.home}</b> ${m.hg}\u2013${m.ag} ${m.away}</td>
         </tr>`;
       }).join('');
-      const w = h2h.homeWins, l = h2h.awayWins, d = h2h.draws;
-      const record = (w != null && l != null && d != null)
-        ? `<div class="working" style="margin-bottom:12px">Last ${h2h.total} meetings: <b>${fx.home} won ${w}</b>, <b>${fx.away} won ${l}</b>, drawn ${d}.</div>`
+      // look up by team name — safer than trusting the API's own home/away labelling,
+      // which flips between meetings. Skip the summary line rather than risk a wrong number.
+      const hW = h2h.record ? h2h.record[fx.home] : null, aW = h2h.record ? h2h.record[fx.away] : null;
+      const record = (hW != null && aW != null)
+        ? `<div class="working" style="margin-bottom:12px">Last ${h2h.total} meetings: <b>${fx.home} won ${hW}</b>, <b>${fx.away} won ${aW}</b>, drawn ${h2h.draws}.</div>`
         : '';
       h2hCard = `<div class="market">
         <div class="market-top"><span class="market-name">Head to head${infoIcon('h2h')}</span></div>
@@ -767,7 +768,7 @@ function renderFixture(fx, home, away, positions, h2h) {
         <div class="working">No previous meetings in our data — first time these two have met, or it's outside our records.</div></div>`;
     }
 
-    /* ---- WHO WINS? (recent form blended with league position) ---- */
+    /* ---- WHO WINS? (form leads; league position and head-to-head play supporting roles) ---- */
     const winTest = m => m.gf > m.ga;
     const hWin = breakdown(home, winTest), aWin = breakdown(away, winTest);
     const formEdge = hWin.rate - aWin.rate;              // + = home stronger on form
@@ -776,18 +777,37 @@ function renderFixture(fx, home, away, positions, h2h) {
       posEdge = (positions.awayPos - positions.homePos) / positions.total * 100; // + = home higher up
       posBit = ` ${fx.home} sit <b>${ord(positions.homePos)}</b> to ${fx.away}'s <b>${ord(positions.awayPos)}</b> in the table.`;
     }
-    const edge = positions ? (formEdge * 0.5 + posEdge * 0.5) : formEdge;
+    // head-to-head only counts once there's a decent sample — a couple of past
+    // meetings shouldn't sway the call any more than a couple of recent games would
+    const H2H_MIN = 4;
+    let h2hEdge = 0, h2hUsed = false;
+    if (h2h && !h2h.empty && h2h.total >= H2H_MIN && h2h.record) {
+      const hW = h2h.record[fx.home], aW = h2h.record[fx.away];
+      if (hW != null && aW != null) { h2hEdge = ((hW - aW) / h2h.total) * 100; h2hUsed = true; }
+    }
+    // form leads the blend; position and head-to-head each get a supporting weight,
+    // renormalised to whichever signals are actually available for this fixture
+    let formW = 0.6, posW = positions ? 0.25 : 0, h2hW = h2hUsed ? 0.15 : 0;
+    const wTotal = formW + posW + h2hW;
+    formW /= wTotal; posW /= wTotal; h2hW /= wTotal;
+    const edge = formEdge * formW + posEdge * posW + h2hEdge * h2hW;
+    const signals = ['form', ...(positions ? ['league position'] : []), ...(h2hUsed ? ['head-to-head'] : [])];
+    const signalsText = signals.length > 1
+      ? signals.slice(0, -1).join(', ') + ' and ' + signals[signals.length - 1]
+      : signals[0];
     let wLean;
-    if (edge >= 20)
-      wLean = `The lean is towards a <b>home win</b> — ${fx.home} come out ahead on form${positions ? ' and league position' : ''}.${posBit}`;
-    else if (edge <= -20)
-      wLean = `The lean is towards an <b>away win</b> — ${fx.away} come out ahead on form${positions ? ' and league position' : ''}.${posBit}`;
-    else if (positions && Math.sign(formEdge) !== Math.sign(posEdge) && Math.abs(formEdge) >= 25 && Math.abs(posEdge) >= 25) {
+    // a genuine, large disagreement between form and the table gets flagged outright —
+    // checked before the edge, so a hot streak can't out-vote a real tier gap
+    if (positions && Math.sign(formEdge) !== Math.sign(posEdge) && Math.abs(formEdge) >= 20 && Math.abs(posEdge) >= 40) {
       const formFav = formEdge > 0 ? fx.home : fx.away;
       const tableFav = posEdge > 0 ? fx.home : fx.away;
       wLean = `Genuinely hard to call — recent form favours <b>${formFav}</b>, but the table favours <b>${tableFav}</b>.${posBit} A hot streak running into a stronger side on paper.`;
-    } else
-      wLean = `Too close to call — the two are well matched${positions ? ' on form and in the table' : ' on form'}, so a draw or either win all look live.${posBit}`;
+    } else if (edge >= 20)
+      wLean = `The lean is towards a <b>home win</b> — ${fx.home} come out ahead on ${signalsText}.${posBit}`;
+    else if (edge <= -20)
+      wLean = `The lean is towards an <b>away win</b> — ${fx.away} come out ahead on ${signalsText}.${posBit}`;
+    else
+      wLean = `Too close to call — the two are well matched on ${signalsText}, so a draw or either win all look live.${posBit}`;
     const whoWins = compareCard('Who wins?', 'win', fx.home, home, fx.away, away, winTest, wLean, 'won', 'didn\u2019t');
 
     /* ---- AHEAD AT HALF-TIME ---- */
