@@ -9,13 +9,13 @@
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Archivo:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0a1d13; --panel:#123023; --panel-2:#1a3c2c; --line:#254a38;
+    --bg:#0a1d13; --panel:rgba(18,48,35,.93); --panel-2:rgba(26,60,44,.93); --line:#254a38;
     --text:#eef5f0; --muted:#8ba896; --pitch:#2dd4bf; --pitch2:#2dd4bf;
     --good:#3ddc84; --meh:#ffc94d; --bad:#ff5d5d; --radius:14px;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{
-    background:radial-gradient(900px 500px at 80% -10%,rgba(45,212,191,.07),transparent 60%),var(--bg);
+    background:var(--bg);
     color:var(--text);font-family:'Archivo',system-ui,sans-serif;line-height:1.5;min-height:100vh;
   }
   .pitch-bg{position:fixed;inset:0;width:100vw;height:100vh;z-index:-1;pointer-events:none}
@@ -33,7 +33,7 @@
   .fixtures{display:grid;gap:10px}
   .fixture-btn{all:unset;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:14px;
     background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 18px;
-    transition:border-color .15s,transform .15s,background .15s}
+    backdrop-filter:blur(2px);transition:border-color .15s,transform .15s,background .15s}
   .fixture-btn:hover{border-color:var(--pitch);transform:translateY(-1px);background:var(--panel-2)}
   .fixture-btn.active{border-color:var(--pitch);background:var(--panel-2)}
   .fixture-teams{font-weight:600;font-size:16px}
@@ -49,7 +49,7 @@
   .kickoff{font-family:'Space Mono',monospace;font-size:13px;color:var(--pitch);margin-bottom:10px}
   .matchup .at{color:var(--pitch)}
   .disclaimer{font-size:13px;color:var(--muted);border-left:2px solid var(--line);padding-left:12px;margin:14px 0 4px}
-  .market{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-bottom:14px}
+  .market{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-bottom:14px;backdrop-filter:blur(2px)}
   .market-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
   .market-name{font-weight:700;font-size:17px}
   .market-stat{font-family:'Space Mono',monospace;font-size:26px;font-weight:700}
@@ -114,7 +114,7 @@
   .badge.D{background:rgba(255,201,77,.2);color:var(--meh)}
   .badge.L{background:rgba(255,93,93,.2);color:var(--bad)}
   /* ---- league dashboard ---- */
-  .dash{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-top:8px}
+  .dash{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-top:8px;backdrop-filter:blur(2px)}
   .dash h3{font-family:'Montserrat',sans-serif;font-weight:700;text-transform:uppercase;font-size:17px;letter-spacing:.5px;margin-bottom:2px}
   .dash .sub{font-size:12px;color:var(--muted);margin-bottom:14px}
   .dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
@@ -148,7 +148,7 @@
   .slip-add:hover{border-color:var(--pitch)}
   .slip-add.on{background:rgba(45,212,191,.12);border-color:var(--pitch);color:var(--pitch)}
   #slip{position:fixed;right:18px;bottom:18px;width:330px;max-width:calc(100vw - 36px);background:var(--panel);
-    border:1px solid var(--pitch);border-radius:var(--radius);padding:16px 18px;box-shadow:0 14px 40px rgba(0,0,0,.3);
+    backdrop-filter:blur(2px);border:1px solid var(--pitch);border-radius:var(--radius);padding:16px 18px;box-shadow:0 14px 40px rgba(0,0,0,.3);
     z-index:20;display:none}
   #slip .slip-head{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:15px;margin-bottom:10px}
   #slip .slip-head button{all:unset;cursor:pointer;font-size:12px;color:var(--muted);font-family:'Space Mono',monospace}
@@ -167,16 +167,23 @@
 </head>
 <body>
 <svg class="pitch-bg" viewBox="0 0 400 620" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-  <rect x="20" y="20" width="360" height="580" fill="none" stroke="rgba(255,255,255,.09)" stroke-width="1.5"/>
-  <line x1="20" y1="310" x2="380" y2="310" stroke="rgba(255,255,255,.09)" stroke-width="1.5"/>
-  <circle cx="200" cy="310" r="55" fill="none" stroke="rgba(255,255,255,.09)" stroke-width="1.5"/>
-  <circle cx="200" cy="310" r="2.5" fill="rgba(255,255,255,.12)"/>
-  <rect x="110" y="20" width="180" height="90" fill="none" stroke="rgba(255,255,255,.09)" stroke-width="1.5"/>
-  <rect x="155" y="20" width="90" height="35" fill="none" stroke="rgba(255,255,255,.09)" stroke-width="1.5"/>
-  <path d="M 155 110 A 55 55 0 0 0 245 110" fill="none" stroke="rgba(255,255,255,.09)" stroke-width="1.5"/>
-  <rect x="110" y="510" width="180" height="90" fill="none" stroke="rgba(255,255,255,.09)" stroke-width="1.5"/>
-  <rect x="155" y="565" width="90" height="35" fill="none" stroke="rgba(255,255,255,.09)" stroke-width="1.5"/>
-  <path d="M 155 510 A 55 55 0 0 1 245 510" fill="none" stroke="rgba(255,255,255,.09)" stroke-width="1.5"/>
+  <defs>
+    <pattern id="mow" width="400" height="80" patternUnits="userSpaceOnUse">
+      <rect width="400" height="40" fill="#2d8a4a"/>
+      <rect y="40" width="400" height="40" fill="#256f3c"/>
+    </pattern>
+  </defs>
+  <rect x="0" y="0" width="400" height="620" fill="url(#mow)"/>
+  <rect x="20" y="20" width="360" height="580" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5"/>
+  <line x1="20" y1="310" x2="380" y2="310" stroke="rgba(255,255,255,.5)" stroke-width="2.5"/>
+  <circle cx="200" cy="310" r="55" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5"/>
+  <circle cx="200" cy="310" r="3" fill="rgba(255,255,255,.6)"/>
+  <rect x="110" y="20" width="180" height="90" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5"/>
+  <rect x="155" y="20" width="90" height="35" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5"/>
+  <path d="M 155 110 A 55 55 0 0 0 245 110" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5"/>
+  <rect x="110" y="510" width="180" height="90" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5"/>
+  <rect x="155" y="565" width="90" height="35" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5"/>
+  <path d="M 155 510 A 55 55 0 0 1 245 510" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5"/>
 </svg>
 <div class="app">
   <header>
