@@ -29,6 +29,7 @@ export default async function handler(req, res) {
 
     const j = await r.json();
     const positions = {};
+    const positionsByName = {};
     let total = 0;
     const groups = [];
 
@@ -37,10 +38,12 @@ export default async function handler(req, res) {
       const table = block.table || [];
       total = Math.max(total, table.length); // largest single table = league size
       const rows = table.map(row => {
+        const name = row.team?.shortName || row.team?.name || 'Team';
         if (row.team?.id) positions[row.team.id] = row.position;
+        positionsByName[name] = row.position;
         return {
           position: row.position,
-          team: row.team?.shortName || row.team?.name || 'Team',
+          team: name,
           crest: row.team?.crest || '',
           played: row.playedGames || 0,
           won: row.won || 0,
@@ -55,7 +58,7 @@ export default async function handler(req, res) {
       groups.push({ name: block.group || null, rows }); // group stages get separate tables
     });
 
-    const data = { positions, total, groups };
+    const data = { positions, positionsByName, total, groups };
     cache[id] = { at: Date.now(), data };
     res.status(200).json(data);
   } catch (e) {
