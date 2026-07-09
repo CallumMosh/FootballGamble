@@ -20,14 +20,32 @@
   }
   .pitch-bg{position:fixed;inset:0;width:100vw;height:100vh;z-index:-1;pointer-events:none}
   .app{max-width:880px;margin:0 auto;padding:32px 20px 80px}
-  .brand{font-family:'Montserrat',sans-serif;font-weight:800;font-size:clamp(38px,8vw,60px);letter-spacing:.5px;line-height:.95;text-transform:uppercase}
-  .brand span{color:var(--pitch)}
-  .tagline{color:var(--muted);font-size:15px;margin-top:8px;max-width:46ch}.tagline b{color:var(--text)}
-  .picker-label,.section-h{font-size:12px;text-transform:uppercase;letter-spacing:2px;color:var(--muted)}
+  .brand{font-family:'Montserrat',sans-serif;font-weight:800;font-size:clamp(38px,8vw,60px);letter-spacing:.5px;line-height:.95;text-transform:uppercase;text-shadow:0 1px 6px rgba(0,0,0,.4)}
+  .brand span{color:#f6faf7;text-shadow:0 1px 6px rgba(0,0,0,.4)}
+  .tagline{color:#d4ecdf;font-size:15px;margin-top:8px;max-width:46ch;text-shadow:0 1px 5px rgba(0,0,0,.4)}.tagline b{color:#f6faf7}
+  .picker-label,.section-h{font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#d4ecdf;text-shadow:0 1px 5px rgba(0,0,0,.4)}
   .fixture-group-h{font-family:'Space Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;
-    color:var(--pitch);margin:20px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+    color:#f6faf7;text-shadow:0 1px 5px rgba(0,0,0,.4);margin:20px 0 8px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.25)}
   .fixture-group-h:first-child{margin-top:6px}
   .picker-label{margin:28px 0 10px}
+  .featured-card{all:unset;cursor:pointer;display:block;width:100%;background:var(--panel);backdrop-filter:blur(2px);
+    border:2px solid var(--pitch);border-radius:16px;padding:20px 22px;margin-bottom:24px;
+    box-shadow:0 0 0 1px rgba(45,212,191,.15),0 10px 30px rgba(0,0,0,.35);transition:transform .15s,box-shadow .15s}
+  .featured-card:hover{transform:translateY(-2px);box-shadow:0 0 0 1px rgba(45,212,191,.25),0 14px 36px rgba(0,0,0,.4)}
+  .featured-eyebrow{font-family:'Space Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:2px;
+    color:var(--pitch);margin-bottom:12px}
+  .featured-teams{display:flex;align-items:center;gap:10px;font-weight:700;font-size:21px;color:var(--text);
+    font-family:'Montserrat',sans-serif;text-transform:uppercase;letter-spacing:.3px;flex-wrap:wrap}
+  .featured-teams .crest{width:30px;height:30px;margin:0}
+  .featured-teams .vs{color:var(--muted);font-weight:400;font-size:15px;margin:0 4px;text-transform:none}
+  .featured-time{font-family:'Space Mono',monospace;font-size:12px;color:var(--muted);margin:6px 0 18px}
+  .featured-stats{display:flex;gap:12px;margin-bottom:16px}
+  .featured-stat{flex:1;background:var(--panel-2);border-radius:10px;padding:12px 14px}
+  .featured-stat .nm{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+  .featured-stat .pct{font-family:'Space Mono',monospace;font-weight:700;font-size:30px;color:var(--pitch)}
+  .featured-lean{font-size:14px;line-height:1.55;color:var(--text);margin-bottom:14px}
+  .featured-lean b{color:var(--pitch)}
+  .featured-cta{font-family:'Space Mono',monospace;font-size:12.5px;color:var(--pitch);font-weight:700}
   .section-h{margin:26px 0 12px;display:flex;align-items:center;gap:12px}
   .section-h::after{content:"";flex:1;height:1px;background:var(--line)}
   .fixtures{display:grid;gap:10px}
@@ -43,12 +61,12 @@
   .fixture-time{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);white-space:nowrap}
   .fixture-league{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);
     border:1px solid var(--line);border-radius:999px;padding:3px 10px;white-space:nowrap}
-  .note{color:var(--muted);font-size:13px;padding:14px 0}
+  .note{color:#d4ecdf;text-shadow:0 1px 4px rgba(0,0,0,.4);font-size:13px;padding:14px 0}
   .results{margin-top:36px}.results.hidden{display:none}
-  .matchup{font-family:'Montserrat',sans-serif;font-weight:700;text-transform:uppercase;font-size:clamp(22px,5vw,32px);letter-spacing:.5px;margin-bottom:4px}
-  .kickoff{font-family:'Space Mono',monospace;font-size:13px;color:var(--pitch);margin-bottom:10px}
-  .matchup .at{color:var(--pitch)}
-  .disclaimer{font-size:13px;color:var(--muted);border-left:2px solid var(--line);padding-left:12px;margin:14px 0 4px}
+  .matchup{font-family:'Montserrat',sans-serif;font-weight:700;text-transform:uppercase;font-size:clamp(22px,5vw,32px);letter-spacing:.5px;margin-bottom:4px;text-shadow:0 1px 6px rgba(0,0,0,.4)}
+  .kickoff{font-family:'Space Mono',monospace;font-size:13px;color:#f6faf7;text-shadow:0 1px 5px rgba(0,0,0,.4);margin-bottom:10px}
+  .matchup .at{color:#f6faf7}
+  .disclaimer{font-size:13px;color:#d4ecdf;text-shadow:0 1px 4px rgba(0,0,0,.4);border-left:2px solid rgba(255,255,255,.35);padding-left:12px;margin:14px 0 4px}
   .market{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-bottom:14px;backdrop-filter:blur(2px)}
   .market-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
   .market-name{font-weight:700;font-size:17px}
@@ -107,7 +125,7 @@
     opacity:0;visibility:hidden;transition:opacity .15s;z-index:5;pointer-events:none}
   .info:hover::after,.info:focus::after{opacity:1;visibility:visible}
   .form-row{display:flex;gap:18px;flex-wrap:wrap;margin:18px 0 4px}
-  .form-team{font-size:13px}.form-team .label{color:var(--muted);margin-right:8px}
+  .form-team{font-size:13px}.form-team .label{color:#d4ecdf;text-shadow:0 1px 4px rgba(0,0,0,.4);margin-right:8px}
   .badge{font-family:'Space Mono',monospace;font-weight:700;font-size:12px;display:inline-grid;place-items:center;
     width:22px;height:22px;border-radius:5px;margin-right:3px}
   .badge.W{background:rgba(61,220,132,.2);color:var(--good)}
@@ -162,7 +180,7 @@
   .slip-bar>div{height:100%;border-radius:999px;transition:width .4s}
   .slip-combined{font-family:'Space Mono',monospace;font-weight:700;font-size:18px}
   .slip-note{font-size:12px;color:var(--muted);line-height:1.5}
-  footer{margin-top:40px;font-size:12px;color:var(--muted)}footer b{color:var(--text)}
+  footer{margin-top:40px;font-size:12px;color:#d4ecdf;text-shadow:0 1px 4px rgba(0,0,0,.4)}footer b{color:#f6faf7}
 </style>
 </head>
 <body>
@@ -191,6 +209,8 @@
     <p class="tagline"><b>Transparency through the noise.</b> Plain-English football reads that show their
       working — built on data to help you avoid uninformed bets.</p>
   </header>
+
+  <section id="featured" style="display:none"></section>
 
   <section class="dash" id="tables"></section>
 
@@ -640,11 +660,63 @@ async function fetchJson(url, tries = 2) {
   }
 }
 
+// the soonest upcoming fixture, shown big at the top with its actual read —
+// not a teaser, the real lean, front and centre, one tap from the odds tool
+async function loadFeatured(fx) {
+  const el = document.getElementById('featured');
+  el.innerHTML = `<div class="featured-card" style="cursor:default">
+    <div class="featured-eyebrow">Next up</div>
+    <div class="featured-teams">${fx.crest ? `<img class="crest" src="${fx.crest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${fx.home}
+      <span class="vs">v</span>${fx.awayCrest ? `<img class="crest" src="${fx.awayCrest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${fx.away}</div>
+    <div class="featured-time">${ukTimeShort(fx.date)} · ${fx.league}</div>
+    <div class="featured-lean">Crunching the read…</div></div>`;
+  el.style.display = 'block';
+  try {
+    const [form, standings, h2h] = await Promise.all([
+      getForm(fx),
+      fx.competitionId ? getStandings(fx.competitionId) : Promise.resolve({ positions: {}, positionsByName: {}, total: 0 }),
+      getH2H(fx),
+    ]);
+    const home = (form.home || []).slice(0, WINDOW), away = (form.away || []).slice(0, WINDOW);
+    if (!home.length || !away.length) { el.style.display = 'none'; return; } // not enough data yet — stay quiet, the fixture is still in the list below
+    const pos = standings || { positions: {}, positionsByName: {}, total: 0 };
+    const byName = pos.positionsByName || {};
+    const homePos = pos.positions[fx.homeId] ?? byName[fx.home];
+    const awayPos = pos.positions[fx.awayId] ?? byName[fx.away];
+    const positions = (pos.total >= 10 && homePos && awayPos) ? { homePos, awayPos, total: pos.total } : null;
+    const { hWin, aWin, wLean } = computeWhoWins(fx, home, away, positions, h2h);
+
+    const card = document.createElement('button');
+    card.className = 'featured-card';
+    card.innerHTML = `
+      <div class="featured-eyebrow">Next up</div>
+      <div class="featured-teams">${fx.crest ? `<img class="crest" src="${fx.crest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${fx.home}
+        <span class="vs">v</span>${fx.awayCrest ? `<img class="crest" src="${fx.awayCrest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${fx.away}</div>
+      <div class="featured-time">${ukTimeShort(fx.date)} · ${fx.league}</div>
+      <div class="featured-stats">
+        <div class="featured-stat"><span class="nm">${fx.home}</span><span class="pct">${hWin.rate}%</span></div>
+        <div class="featured-stat"><span class="nm">${fx.away}</span><span class="pct">${aWin.rate}%</span></div>
+      </div>
+      <div class="featured-lean">${wLean}</div>
+      <div class="featured-cta">See the full breakdown &amp; odds \u2192</div>`;
+    card.onclick = () => {
+      document.querySelectorAll('.fixture-btn').forEach(b => b.classList.remove('active'));
+      const match = [...document.querySelectorAll('.fixture-btn')].find(b => b.innerHTML.includes(fx.home) && b.innerHTML.includes(fx.away));
+      if (match) match.classList.add('active');
+      showFixture(fx);
+      document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    el.innerHTML = '';
+    el.appendChild(card);
+  } catch (e) { el.style.display = 'none'; } // fails quietly — the fixture is still there in the normal list
+}
+
 async function loadFixtures() {
   try {
     const data = await fetchJson('/api/fixtures');
     if (!data.length) { noteEl.textContent = 'No upcoming fixtures in the next 10 days.'; return; }
     noteEl.style.display = 'none';
+    loadFeatured(data[0]); // soonest fixture overall — data arrives sorted soonest-first
 
     // group by league — data arrives sorted soonest-first, so each group's first
     // entry is that league's earliest fixture, which we use to order the groups too
@@ -757,6 +829,45 @@ async function showFixture(fx) {
 
 const ord = n => { const s = ['th','st','nd','rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
 
+// shared by the full match view AND the featured "next up" card — one formula,
+// used consistently everywhere, so a future fix only has to happen in one place
+function computeWhoWins(fx, home, away, positions, h2h) {
+  const winTest = m => m.gf > m.ga;
+  const hWin = breakdown(home, winTest), aWin = breakdown(away, winTest);
+  const formEdge = hWin.rate - aWin.rate;
+  let posEdge = 0, posBit = '';
+  if (positions) {
+    posEdge = (positions.awayPos - positions.homePos) / positions.total * 100;
+    posBit = ` ${fx.home} sit <b>${ord(positions.homePos)}</b> to ${fx.away}'s <b>${ord(positions.awayPos)}</b> in the table.`;
+  }
+  const H2H_MIN = 4;
+  let h2hEdge = 0, h2hUsed = false;
+  if (h2h && !h2h.empty && h2h.total >= H2H_MIN && h2h.record) {
+    const hW = h2h.record[fx.home], aW = h2h.record[fx.away];
+    if (hW != null && aW != null) { h2hEdge = ((hW - aW) / h2h.total) * 100; h2hUsed = true; }
+  }
+  let formW = 0.6, posW = positions ? 0.25 : 0, h2hW = h2hUsed ? 0.15 : 0;
+  const wTotal = formW + posW + h2hW;
+  formW /= wTotal; posW /= wTotal; h2hW /= wTotal;
+  const edge = formEdge * formW + posEdge * posW + h2hEdge * h2hW;
+  const signals = ['form', ...(positions ? ['league position'] : []), ...(h2hUsed ? ['head-to-head'] : [])];
+  const signalsText = signals.length > 1
+    ? signals.slice(0, -1).join(', ') + ' and ' + signals[signals.length - 1]
+    : signals[0];
+  let wLean;
+  if (positions && Math.sign(formEdge) !== Math.sign(posEdge) && Math.abs(formEdge) >= 20 && Math.abs(posEdge) >= 40) {
+    const formFav = formEdge > 0 ? fx.home : fx.away;
+    const tableFav = posEdge > 0 ? fx.home : fx.away;
+    wLean = `Genuinely hard to call — recent form favours <b>${formFav}</b>, but the table favours <b>${tableFav}</b>.${posBit} A hot streak running into a stronger side on paper.`;
+  } else if (edge >= 20)
+    wLean = `The lean is towards a <b>home win</b> — ${fx.home} come out ahead on ${signalsText}.${posBit}`;
+  else if (edge <= -20)
+    wLean = `The lean is towards an <b>away win</b> — ${fx.away} come out ahead on ${signalsText}.${posBit}`;
+  else
+    wLean = `Too close to call — the two are well matched on ${signalsText}, so a draw or either win all look live.${posBit}`;
+  return { winTest, hWin, aWin, edge, wLean };
+}
+
 // draws everything from two teams' last-WINDOW result arrays
 function renderFixture(fx, home, away, positions, h2h) {
     const tag = `${fx.home} v ${fx.away}`;
@@ -792,45 +903,7 @@ function renderFixture(fx, home, away, positions, h2h) {
     }
 
     /* ---- WHO WINS? (form leads; league position and head-to-head play supporting roles) ---- */
-    const winTest = m => m.gf > m.ga;
-    const hWin = breakdown(home, winTest), aWin = breakdown(away, winTest);
-    const formEdge = hWin.rate - aWin.rate;              // + = home stronger on form
-    let posEdge = 0, posBit = '';
-    if (positions) {
-      posEdge = (positions.awayPos - positions.homePos) / positions.total * 100; // + = home higher up
-      posBit = ` ${fx.home} sit <b>${ord(positions.homePos)}</b> to ${fx.away}'s <b>${ord(positions.awayPos)}</b> in the table.`;
-    }
-    // head-to-head only counts once there's a decent sample — a couple of past
-    // meetings shouldn't sway the call any more than a couple of recent games would
-    const H2H_MIN = 4;
-    let h2hEdge = 0, h2hUsed = false;
-    if (h2h && !h2h.empty && h2h.total >= H2H_MIN && h2h.record) {
-      const hW = h2h.record[fx.home], aW = h2h.record[fx.away];
-      if (hW != null && aW != null) { h2hEdge = ((hW - aW) / h2h.total) * 100; h2hUsed = true; }
-    }
-    // form leads the blend; position and head-to-head each get a supporting weight,
-    // renormalised to whichever signals are actually available for this fixture
-    let formW = 0.6, posW = positions ? 0.25 : 0, h2hW = h2hUsed ? 0.15 : 0;
-    const wTotal = formW + posW + h2hW;
-    formW /= wTotal; posW /= wTotal; h2hW /= wTotal;
-    const edge = formEdge * formW + posEdge * posW + h2hEdge * h2hW;
-    const signals = ['form', ...(positions ? ['league position'] : []), ...(h2hUsed ? ['head-to-head'] : [])];
-    const signalsText = signals.length > 1
-      ? signals.slice(0, -1).join(', ') + ' and ' + signals[signals.length - 1]
-      : signals[0];
-    let wLean;
-    // a genuine, large disagreement between form and the table gets flagged outright —
-    // checked before the edge, so a hot streak can't out-vote a real tier gap
-    if (positions && Math.sign(formEdge) !== Math.sign(posEdge) && Math.abs(formEdge) >= 20 && Math.abs(posEdge) >= 40) {
-      const formFav = formEdge > 0 ? fx.home : fx.away;
-      const tableFav = posEdge > 0 ? fx.home : fx.away;
-      wLean = `Genuinely hard to call — recent form favours <b>${formFav}</b>, but the table favours <b>${tableFav}</b>.${posBit} A hot streak running into a stronger side on paper.`;
-    } else if (edge >= 20)
-      wLean = `The lean is towards a <b>home win</b> — ${fx.home} come out ahead on ${signalsText}.${posBit}`;
-    else if (edge <= -20)
-      wLean = `The lean is towards an <b>away win</b> — ${fx.away} come out ahead on ${signalsText}.${posBit}`;
-    else
-      wLean = `Too close to call — the two are well matched on ${signalsText}, so a draw or either win all look live.${posBit}`;
+    const { winTest, wLean } = computeWhoWins(fx, home, away, positions, h2h);
     const whoWins = compareCard('Who wins?', 'win', fx.home, home, fx.away, away, winTest, wLean, 'won', 'didn\u2019t');
 
     /* ---- AHEAD AT HALF-TIME ---- */
