@@ -24,6 +24,9 @@
   .brand span{color:var(--pitch)}
   .tagline{color:var(--muted);font-size:15px;margin-top:8px;max-width:46ch}.tagline b{color:var(--text)}
   .picker-label,.section-h{font-size:12px;text-transform:uppercase;letter-spacing:2px;color:var(--muted)}
+  .fixture-group-h{font-family:'Space Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;
+    color:var(--pitch);margin:20px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+  .fixture-group-h:first-child{margin-top:6px}
   .picker-label{margin:28px 0 10px}
   .section-h{margin:26px 0 12px;display:flex;align-items:center;gap:12px}
   .section-h::after{content:"";flex:1;height:1px;background:var(--line)}
@@ -624,17 +627,31 @@ async function loadFixtures() {
     const data = await fetchJson('/api/fixtures');
     if (!data.length) { noteEl.textContent = 'No upcoming fixtures in the next 10 days.'; return; }
     noteEl.style.display = 'none';
-    data.forEach(fx => {
-      const btn = document.createElement('button');
-      btn.className = 'fixture-btn';
-      btn.innerHTML = `<span class="fixture-teams">${fx.crest ? `<img class="crest" src="${fx.crest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${fx.home}<span class="vs">v</span>${fx.awayCrest ? `<img class="crest" src="${fx.awayCrest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${fx.away}</span>
-                       <span class="fixture-right"><span class="fixture-time">${ukTimeShort(fx.date)}</span><span class="fixture-league">${fx.league}</span></span>`;
-      btn.onclick = () => {
-        document.querySelectorAll('.fixture-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        showFixture(fx);
-      };
-      fixturesEl.appendChild(btn);
+
+    // group by league — data arrives sorted soonest-first, so each group's first
+    // entry is that league's earliest fixture, which we use to order the groups too
+    const groups = {};
+    data.forEach(fx => { (groups[fx.league] ||= []).push(fx); });
+    const leagueOrder = Object.keys(groups).sort((a, b) => new Date(groups[a][0].date) - new Date(groups[b][0].date));
+
+    leagueOrder.forEach(league => {
+      const heading = document.createElement('div');
+      heading.className = 'fixture-group-h';
+      heading.textContent = league;
+      fixturesEl.appendChild(heading);
+
+      groups[league].forEach(fx => {
+        const btn = document.createElement('button');
+        btn.className = 'fixture-btn';
+        btn.innerHTML = `<span class="fixture-teams">${fx.crest ? `<img class="crest" src="${fx.crest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${fx.home}<span class="vs">v</span>${fx.awayCrest ? `<img class="crest" src="${fx.awayCrest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${fx.away}</span>
+                         <span class="fixture-time">${ukTimeShort(fx.date)}</span>`;
+        btn.onclick = () => {
+          document.querySelectorAll('.fixture-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          showFixture(fx);
+        };
+        fixturesEl.appendChild(btn);
+      });
     });
   } catch (e) { noteEl.textContent = `Couldn't load fixtures: ${e.message}`; }
 }
