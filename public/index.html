@@ -671,7 +671,7 @@ async function getStandings(cid) {
     const r = await fetchJson(`/api/standings?competition=${cid}`);
     standingsCache[cid] = r;
     return r;
-  } catch (e) { return { positions: {}, total: 0, groups: [] }; }
+  } catch (e) { return { positions: {}, positionsByName: {}, total: 0, groups: [] }; }
 }
 
 // recent form for a fixture, pulled from the competition feed (works for national
@@ -710,7 +710,7 @@ async function showFixture(fx) {
   try {
     const [form, standings, h2h] = await Promise.all([
       getForm(fx),
-      fx.competitionId ? getStandings(fx.competitionId) : Promise.resolve({ positions: {}, total: 0 }),
+      fx.competitionId ? getStandings(fx.competitionId) : Promise.resolve({ positions: {}, positionsByName: {}, total: 0 }),
       getH2H(fx),
     ]);
     const home = (form.home || []).slice(0, WINDOW);
@@ -721,10 +721,15 @@ async function showFixture(fx) {
         ? 'No tournament games to read yet — World Cup reads fill in once both sides have played a group game.'
         : 'Not enough recent results for one of these teams.');
     }
-    // league position only counts in a real league table (≥10 teams) — skip for WC groups/knockouts
-    const pos = standings || { positions: {}, total: 0 };
-    const positions = (pos.total >= 10 && pos.positions[fx.homeId] && pos.positions[fx.awayId])
-      ? { homePos: pos.positions[fx.homeId], awayPos: pos.positions[fx.awayId], total: pos.total }
+    // league position only counts in a real league table (≥10 teams) — skip for WC groups/knockouts.
+    // try matching by team ID first, then fall back to team name (the fixtures feed and
+    // standings feed occasionally use slightly different IDs for the same club).
+    const pos = standings || { positions: {}, positionsByName: {}, total: 0 };
+    const byName = pos.positionsByName || {};
+    const homePos = pos.positions[fx.homeId] ?? byName[fx.home];
+    const awayPos = pos.positions[fx.awayId] ?? byName[fx.away];
+    const positions = (pos.total >= 10 && homePos && awayPos)
+      ? { homePos, awayPos, total: pos.total }
       : null;
     renderFixture(fx, home, away, positions, h2h);
   } catch (e) {
