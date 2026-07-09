@@ -28,7 +28,6 @@ export default async function handler(req, res) {
       return res.status(r.status).json({ error: detail });
     }
     const j = await r.json();
-    const agg = j.aggregates || {};
     const matches = (j.matches || [])
       .filter(m => m.score?.fullTime?.home != null)
       .sort((a, b) => new Date(b.utcDate) - new Date(a.utcDate))
@@ -41,11 +40,24 @@ export default async function handler(req, res) {
         competition: m.competition?.name || '',
       }));
 
+    // Tally the record ourselves from the match list — the API's own aggregate
+    // field names weren't reliable, and this way the numbers are guaranteed to
+    // match the games listed right below them. Keyed by team name (a team can be
+    // home in one past meeting and away in another).
+    const record = {};
+    let draws = 0;
+    matches.forEach(m => {
+      record[m.home] = record[m.home] || 0;
+      record[m.away] = record[m.away] || 0;
+      if (m.hg > m.ag) record[m.home]++;
+      else if (m.ag > m.hg) record[m.away]++;
+      else draws++;
+    });
+
     const data = {
       total: matches.length,
-      homeWins: agg.homeTeam?.wins ?? null,
-      awayWins: agg.awayTeam?.wins ?? null,
-      draws: agg.homeTeam?.draws ?? null,
+      record, // { 'Team name': wins }
+      draws,
       matches,
       empty: matches.length === 0,
     };
