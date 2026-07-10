@@ -24,10 +24,12 @@
   .app{max-width:880px;margin:0 auto;padding:32px 20px 80px}
   .brand{font-family:'Montserrat',sans-serif;font-weight:800;font-size:clamp(38px,8vw,60px);letter-spacing:.5px;line-height:.95;text-transform:uppercase;text-shadow:0 1px 6px rgba(0,0,0,.5)}
   .brand span{color:#ffffff;text-shadow:0 1px 6px rgba(0,0,0,.5)}
-  .tagline{color:#ffffff;font-size:15px;margin-top:8px;max-width:46ch;text-shadow:0 1px 6px rgba(0,0,0,.5)}.tagline b{color:#ffffff}
-  .picker-label,.section-h{font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#ffffff;text-shadow:0 1px 6px rgba(0,0,0,.5)}
-  .fixture-group-h{font-family:'Space Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;
-    color:#ffffff;text-shadow:0 1px 6px rgba(0,0,0,.5);margin:20px 0 8px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.25)}
+  .tagline{width:fit-content;color:#ffffff;font-size:15px;margin-top:10px;max-width:46ch;
+    background:rgba(6,16,11,.7);padding:10px 14px;border-radius:10px}.tagline b{color:#ffffff}
+  .picker-label,.section-h{width:fit-content;font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#ffffff;
+    background:rgba(6,16,11,.7);padding:6px 12px;border-radius:6px}
+  .fixture-group-h{width:fit-content;font-family:'Space Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;
+    color:#ffffff;background:rgba(6,16,11,.7);padding:6px 12px;border-radius:6px;margin:20px 0 10px}
   .fixture-group-h:first-child{margin-top:6px}
   .picker-label{margin:28px 0 10px}
   .featured-card{all:unset;box-sizing:border-box;cursor:pointer;display:block;width:100%;background:var(--panel);backdrop-filter:blur(2px);
@@ -63,12 +65,16 @@
   .fixture-time{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);white-space:nowrap}
   .fixture-league{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);
     border:1px solid var(--line);border-radius:999px;padding:3px 10px;white-space:nowrap}
-  .note{color:#ffffff;text-shadow:0 1px 6px rgba(0,0,0,.5);font-size:13px;padding:14px 0}
+  .note{width:fit-content;color:#ffffff;background:rgba(6,16,11,.7);font-size:13px;padding:10px 14px;border-radius:8px;margin:14px 0}
   .results{margin-top:36px}.results.hidden{display:none}
-  .matchup{font-family:'Montserrat',sans-serif;font-weight:700;text-transform:uppercase;font-size:clamp(22px,5vw,32px);letter-spacing:.5px;margin-bottom:4px;text-shadow:0 1px 6px rgba(0,0,0,.5)}
-  .kickoff{font-family:'Space Mono',monospace;font-size:13px;color:#ffffff;text-shadow:0 1px 6px rgba(0,0,0,.5);margin-bottom:10px}
+  .matchup{width:fit-content;font-family:'Montserrat',sans-serif;font-weight:700;text-transform:uppercase;
+    font-size:clamp(20px,4.5vw,30px);letter-spacing:.5px;margin-bottom:6px;color:#ffffff;
+    background:rgba(6,16,11,.7);padding:10px 16px;border-radius:12px}
+  .kickoff{width:fit-content;font-family:'Space Mono',monospace;font-size:13px;color:#ffffff;
+    background:rgba(6,16,11,.7);padding:6px 12px;border-radius:6px;margin-bottom:12px}
   .matchup .at{color:#ffffff}
-  .disclaimer{font-size:13px;color:#ffffff;text-shadow:0 1px 6px rgba(0,0,0,.5);border-left:2px solid rgba(255,255,255,.35);padding-left:12px;margin:14px 0 4px}
+  .disclaimer{width:fit-content;font-size:13px;color:#ffffff;background:rgba(6,16,11,.7);
+    border-left:2px solid rgba(255,255,255,.35);padding:10px 14px;border-radius:8px;margin:14px 0 4px}
   .market{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-bottom:14px;backdrop-filter:blur(2px)}
   .market-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
   .market-name{font-weight:700;font-size:17px;min-width:0}
@@ -127,7 +133,7 @@
     opacity:0;visibility:hidden;transition:opacity .15s;z-index:5;pointer-events:none}
   .info:hover::after,.info:focus::after{opacity:1;visibility:visible}
   .form-row{display:flex;gap:18px;flex-wrap:wrap;margin:18px 0 4px}
-  .form-team{font-size:13px}.form-team .label{color:#ffffff;text-shadow:0 1px 6px rgba(0,0,0,.5);margin-right:8px}
+  .form-team{font-size:13px}.form-team .label{color:#ffffff;background:rgba(6,16,11,.7);padding:4px 8px;border-radius:5px;margin-right:8px}
   .badge{font-family:'Space Mono',monospace;font-weight:700;font-size:12px;display:inline-grid;place-items:center;
     width:22px;height:22px;border-radius:5px;margin-right:3px}
   .badge.W{background:#123023;border:1px solid var(--good);color:var(--good)}
@@ -188,7 +194,8 @@
   .slip-bar>div{height:100%;border-radius:999px;transition:width .4s}
   .slip-combined{font-family:'Space Mono',monospace;font-weight:700;font-size:18px}
   .slip-note{font-size:12px;color:var(--muted);line-height:1.5}
-  footer{margin-top:40px;font-size:12px;color:#ffffff;text-shadow:0 1px 6px rgba(0,0,0,.5)}footer b{color:#ffffff}
+  footer{width:fit-content;margin-top:40px;font-size:12px;color:#ffffff;background:rgba(6,16,11,.7);
+    padding:12px 16px;border-radius:10px}footer b{color:#ffffff}
 </style>
 </head>
 <body>
