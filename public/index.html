@@ -19,7 +19,7 @@
     background:var(--bg);overflow-x:hidden;
     color:var(--text);font-family:'Archivo',system-ui,sans-serif;line-height:1.5;min-height:100vh;
   }
-  .pitch-bg{position:fixed;inset:0;z-index:-1;pointer-events:none}
+  .pitch-bg{position:fixed;top:-2px;right:-2px;bottom:-2px;left:-2px;z-index:-1;pointer-events:none}
   .app{max-width:880px;margin:0 auto;padding:32px 20px 80px}
   .brand{font-family:'Montserrat',sans-serif;font-weight:800;font-size:clamp(38px,8vw,60px);letter-spacing:.5px;line-height:.95;text-transform:uppercase;text-shadow:0 1px 6px rgba(0,0,0,.5)}
   .brand span{color:#ffffff;text-shadow:0 1px 6px rgba(0,0,0,.5)}
@@ -29,7 +29,7 @@
     color:#ffffff;text-shadow:0 1px 6px rgba(0,0,0,.5);margin:20px 0 8px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.25)}
   .fixture-group-h:first-child{margin-top:6px}
   .picker-label{margin:28px 0 10px}
-  .featured-card{all:unset;cursor:pointer;display:block;width:100%;background:var(--panel);backdrop-filter:blur(2px);
+  .featured-card{all:unset;box-sizing:border-box;cursor:pointer;display:block;width:100%;background:var(--panel);backdrop-filter:blur(2px);
     border:2px solid var(--pitch);border-radius:16px;padding:clamp(16px,4vw,22px);margin-bottom:24px;
     box-shadow:0 0 0 1px rgba(45,212,191,.15),0 10px 30px rgba(0,0,0,.35);transition:transform .15s,box-shadow .15s}
   .featured-card:hover{transform:translateY(-2px);box-shadow:0 0 0 1px rgba(45,212,191,.25),0 14px 36px rgba(0,0,0,.4)}
@@ -50,7 +50,7 @@
   .section-h{margin:26px 0 12px;display:flex;align-items:center;gap:12px}
   .section-h::after{content:"";flex:1;height:1px;background:var(--line)}
   .fixtures{display:grid;gap:10px}
-  .fixture-btn{all:unset;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:14px;
+  .fixture-btn{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:14px;
     background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 18px;
     backdrop-filter:blur(2px);transition:border-color .15s,transform .15s,background .15s}
   .fixture-btn:hover{border-color:var(--pitch);transform:translateY(-1px);background:var(--panel-2)}
@@ -92,7 +92,7 @@
   .angle{background:rgba(45,212,191,.06);border:1px solid var(--line);border-left:3px solid var(--pitch);
     border-radius:10px;padding:13px 15px;font-size:14px;margin-bottom:14px;line-height:1.5}
   .angle b{color:var(--text)}
-  .games-toggle{all:unset;cursor:pointer;display:inline-block;margin-top:12px;font-family:'Space Mono',monospace;
+  .games-toggle{all:unset;box-sizing:border-box;cursor:pointer;display:inline-block;margin-top:12px;font-family:'Space Mono',monospace;
     font-size:12px;color:var(--pitch);border:1px solid var(--line);border-radius:7px;padding:5px 10px}
   .games-toggle:hover{border-color:var(--pitch)}
   .games-wrap{margin-top:12px;overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -141,12 +141,12 @@
   .dash-item{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line)}
   .dash-item:last-child{border-bottom:none}
   .insight-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
-  .insight-tab{all:unset;cursor:pointer;font-family:'Space Mono',monospace;font-size:12.5px;font-weight:700;
+  .insight-tab{all:unset;box-sizing:border-box;cursor:pointer;font-family:'Space Mono',monospace;font-size:12.5px;font-weight:700;
     padding:8px 16px;border-radius:999px;border:1px solid var(--line);color:var(--muted);transition:border-color .15s,background .15s,color .15s}
   .insight-tab:hover{border-color:var(--pitch);color:var(--text)}
   .insight-tab.active{background:var(--pitch);border-color:var(--pitch);color:var(--bg)}
   .table-pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
-  .table-pill{all:unset;cursor:pointer;font-family:'Space Mono',monospace;font-size:12px;color:var(--muted);
+  .table-pill{all:unset;box-sizing:border-box;cursor:pointer;font-family:'Space Mono',monospace;font-size:12px;color:var(--muted);
     border:1px solid var(--line);border-radius:999px;padding:6px 14px;transition:border-color .15s,color .15s,background .15s}
   .table-pill:hover{border-color:var(--pitch);color:var(--text)}
   .table-pill.active{border-color:var(--pitch);background:rgba(45,212,191,.1);color:var(--pitch)}
@@ -168,7 +168,7 @@
     border-left:3px solid var(--pitch);border-radius:10px;padding:13px 15px;margin:4px 0 16px}
   .track-head b{color:var(--text)}.track-head span{color:var(--muted);font-size:13px}
   /* ---- slip builder ---- */
-  .slip-add{all:unset;cursor:pointer;display:inline-block;margin-top:13px;font-family:'Space Mono',monospace;font-size:12px;
+  .slip-add{all:unset;box-sizing:border-box;cursor:pointer;display:inline-block;margin-top:13px;font-family:'Space Mono',monospace;font-size:12px;
     color:var(--text);border:1px solid var(--line);border-radius:7px;padding:6px 11px;transition:border-color .15s,background .15s}
   .slip-add:hover{border-color:var(--pitch)}
   .slip-add.on{background:rgba(45,212,191,.12);border-color:var(--pitch);color:var(--pitch)}
@@ -176,12 +176,12 @@
     backdrop-filter:blur(2px);border:1px solid var(--pitch);border-radius:var(--radius);padding:16px 18px;box-shadow:0 14px 40px rgba(0,0,0,.3);
     z-index:20;display:none}
   #slip .slip-head{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:15px;margin-bottom:10px}
-  #slip .slip-head button{all:unset;cursor:pointer;font-size:12px;color:var(--muted);font-family:'Space Mono',monospace}
+  #slip .slip-head button{all:unset;box-sizing:border-box;cursor:pointer;font-size:12px;color:var(--muted);font-family:'Space Mono',monospace}
   #slip .slip-head button:hover{color:var(--bad)}
   .slip-item{display:flex;align-items:center;gap:8px;font-size:13px;padding:7px 0;border-bottom:1px solid var(--line)}
   .slip-item span:first-child{flex:1}.slip-item em{color:var(--muted);font-style:normal;font-size:11px;display:block}
   .slip-pct{font-family:'Space Mono',monospace;color:var(--muted)}
-  .slip-x{all:unset;cursor:pointer;color:var(--muted);font-size:13px}.slip-x:hover{color:var(--bad)}
+  .slip-x{all:unset;box-sizing:border-box;cursor:pointer;color:var(--muted);font-size:13px}.slip-x:hover{color:var(--bad)}
   .slip-meter{display:flex;align-items:center;gap:10px;margin:12px 0 8px}
   .slip-bar{flex:1;height:8px;background:var(--panel-2);border-radius:999px;overflow:hidden}
   .slip-bar>div{height:100%;border-radius:999px;transition:width .4s}
