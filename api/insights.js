@@ -6,7 +6,7 @@
 // (Replaces api/highlights.js and api/backtest.js — those can be left dormant.)
 
 const PRIORITY = [
-  [2013, 'Brasileirão'], [2000, 'World Cup'],
+  [2000, 'World Cup'], [2013, 'Brasileirão'],
   [2021, 'Premier League'], [2016, 'Championship'], [2001, 'Champions League'],
   [2014, 'La Liga'], [2019, 'Serie A'], [2002, 'Bundesliga'], [2015, 'Ligue 1'],
 ];
@@ -45,6 +45,7 @@ async function getJson(url, key, tries = 2) {
 }
 function toRows(id, matches) {
   return (matches || [])
+    .filter(m => m.homeTeam?.id === Number(id) || m.awayTeam?.id === Number(id))
     .sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate))
     .map(m => {
       const home = m.homeTeam?.id === Number(id);
@@ -78,8 +79,8 @@ export default async function handler(req, res) {
 
   try {
     const teams = [];            // for the dashboard
-    const candidates = [];       // {id, name} to backtest
-    let league = null;
+    const teamIds = [];          // {id, name} — every team in the chosen league, checked later
+    let league = null, leagueId = null;
     // sequential standings, capped — naturally throttled and rate-limit safe
     for (let i = 0; i < PRIORITY.length && i < MAX_STANDINGS; i++) {
       const [id, name] = PRIORITY[i];
@@ -92,11 +93,13 @@ export default async function handler(req, res) {
             gfPer: per(row.goalsFor, row.playedGames), gaPer: per(row.goalsAgainst, row.playedGames),
             formWins: winsInForm(row.form), hasForm: !!row.form });
         }
-        if ((row.playedGames || 0) >= 8 && row.team?.id) {
-          candidates.push({ id: row.team.id, name: row.team.shortName || row.team.name, league: name });
-        }
+        // don't gate on standings' playedGames here — for a World Cup group table that
+        // caps at 3 regardless of how far a team goes, so it can never reach a useful
+        // threshold. Just collect the team list; real eligibility is checked below
+        // against actual finished matches.
+        if (!league && row.team?.id) teamIds.push({ id: row.team.id, name: row.team.shortName || row.team.name });
       });
-      if (!league && candidates.length) league = name;
+      if (!league && teamIds.length) { league = name; leagueId = id; }
     }
 
     // dashboard
@@ -108,13 +111,24 @@ export default async function handler(req, res) {
               .map(t => ({ name: t.name, league: t.league, stat: `${t.formWins} wins in last 5` })) : [],
     };
 
-    // track record — backtest up to MAX_TEAMS candidates (sequential)
+    // track record — derive each candidate's history from the COMPETITION's own
+    // finished-matches feed (one shared fetch), not the per-team endpoint, which the
+    // free tier doesn't serve for national teams — same fix compteams.js already
+    // uses for the live reads, now applied here too.
     const records = []; let matchesAnalysed = 0;
-    const picks = candidates.slice(0, MAX_TEAMS);
-    for (const p of picks) {
-      const j = await getJson(`https://api.football-data.org/v4/teams/${p.id}/matches?status=FINISHED&limit=30`, key);
-      const rows = toRows(p.id, j?.matches);
-      if (rows.length > WINDOW) { matchesAnalysed += rows.length - WINDOW; backtestTeam(p.name, rows, records); }
+    const picks = [];
+    if (leagueId) {
+      const mj = await getJson(`https://api.football-data.org/v4/competitions/${leagueId}/matches?status=FINISHED`, key);
+      const matches = mj?.matches || [];
+      for (const t of teamIds) {
+        if (picks.length >= MAX_TEAMS) break;
+        const rows = toRows(t.id, matches);
+        if (rows.length > WINDOW) {
+          picks.push(t.name);
+          matchesAnalysed += rows.length - WINDOW;
+          backtestTeam(t.name, rows, records);
+        }
+      }
     }
     const tally = recs => { const landed = recs.filter(r => r.actual).length;
       return { n: recs.length, landed, rate: recs.length ? Math.round(landed / recs.length * 100) : 0 }; };
