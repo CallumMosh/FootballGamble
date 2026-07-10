@@ -14,11 +14,12 @@
     --good:#3ddc84; --meh:#ffc94d; --bad:#ff5d5d; --radius:14px;
   }
   *{box-sizing:border-box;margin:0;padding:0}
+  html{overflow-x:hidden}
   body{
-    background:var(--bg);
+    background:var(--bg);overflow-x:hidden;
     color:var(--text);font-family:'Archivo',system-ui,sans-serif;line-height:1.5;min-height:100vh;
   }
-  .pitch-bg{position:fixed;inset:0;width:100vw;height:100vh;z-index:-1;pointer-events:none}
+  .pitch-bg{position:fixed;inset:0;z-index:-1;pointer-events:none}
   .app{max-width:880px;margin:0 auto;padding:32px 20px 80px}
   .brand{font-family:'Montserrat',sans-serif;font-weight:800;font-size:clamp(38px,8vw,60px);letter-spacing:.5px;line-height:.95;text-transform:uppercase;text-shadow:0 1px 6px rgba(0,0,0,.5)}
   .brand span{color:#ffffff;text-shadow:0 1px 6px rgba(0,0,0,.5)}
