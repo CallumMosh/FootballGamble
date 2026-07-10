@@ -24,14 +24,16 @@
   .app{max-width:880px;margin:0 auto;padding:32px 20px 80px}
   .brand{font-family:'Montserrat',sans-serif;font-weight:800;font-size:clamp(38px,8vw,60px);letter-spacing:.5px;line-height:.95;text-transform:uppercase;text-shadow:0 1px 6px rgba(0,0,0,.5)}
   .brand span{color:#ffffff;text-shadow:0 1px 6px rgba(0,0,0,.5)}
-  .tagline{width:fit-content;color:#ffffff;font-size:15px;margin-top:10px;max-width:46ch;
-    background:rgba(6,16,11,.7);padding:10px 14px;border-radius:10px}.tagline b{color:#ffffff}
+  header{position:relative;padding:8px 4px 4px;margin:-8px -4px 0;
+    background:radial-gradient(ellipse 130% 110% at 50% 25%,rgba(6,16,11,.62) 0%,rgba(6,16,11,.32) 55%,transparent 85%)}
+  .tagline{color:#ffffff;font-size:15px;margin-top:10px;max-width:46ch;text-shadow:0 1px 6px rgba(0,0,0,.5)}.tagline b{color:#ffffff}
   .picker-label,.section-h{width:fit-content;font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#ffffff;
     background:rgba(6,16,11,.7);padding:6px 12px;border-radius:6px}
   .fixture-group-h{width:fit-content;font-family:'Space Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;
     color:#ffffff;background:rgba(6,16,11,.7);padding:6px 12px;border-radius:6px;margin:20px 0 10px}
   .fixture-group-h:first-child{margin-top:6px}
   .picker-label{margin:28px 0 10px}
+  #featured{margin-top:28px}
   .featured-card{all:unset;box-sizing:border-box;cursor:pointer;display:block;width:100%;background:var(--panel);backdrop-filter:blur(2px);
     border:2px solid var(--pitch);border-radius:16px;padding:clamp(16px,4vw,22px);margin-bottom:24px;
     box-shadow:0 0 0 1px rgba(45,212,191,.15),0 10px 30px rgba(0,0,0,.35);transition:transform .15s,box-shadow .15s}
@@ -971,10 +973,13 @@ function renderFixture(fx, home, away, positions, h2h) {
 
     const badges = g => form(g).map(r => `<span class="badge ${r}">${r}</span>`).join('');
 
+    const lookbackText = home.length === away.length
+      ? `Based on each side's last ${home.length} games.`
+      : `Based on recent form — ${fx.home}: last ${home.length}, ${fx.away}: last ${away.length}.`;
     resultsEl.innerHTML = `
       <div class="matchup">${fx.home} <span class="at">vs</span> ${fx.away}</div>
       ${fx.date ? `<div class="kickoff">Kick-off: ${ukTimeFull(fx.date)}</div>` : ''}
-      <p class="disclaimer">Based on each side's last ${WINDOW} games. Every figure lists the games behind it —
+      <p class="disclaimer">${lookbackText} Every figure lists the games behind it —
         tap “show the games” to verify. Descriptive, not a prediction — then use the odds box to test for value.</p>
       <div class="form-row">
         <div class="form-team"><span class="label">${fx.home} form</span>${badges(home)}</div>
