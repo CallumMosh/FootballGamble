@@ -6,12 +6,16 @@
 // (Replaces api/highlights.js and api/backtest.js — those can be left dormant.)
 
 const PRIORITY = [
-  [2000, 'World Cup'], [2013, 'Brasileirão'],
-  [2021, 'Premier League'], [2016, 'Championship'], [2001, 'Champions League'],
-  [2014, 'La Liga'], [2019, 'Serie A'], [2002, 'Bundesliga'], [2015, 'Ligue 1'],
+  [2000, 'World Cup'],                                   // takes priority while it's actually running
+  [2021, 'Premier League'], [2016, 'Championship'], [2014, 'La Liga'],
+  [2013, 'Brasileirão'],
+  [2001, 'Champions League'], [2019, 'Serie A'], [2002, 'Bundesliga'], [2015, 'Ligue 1'],
 ];
 const WINDOW = 6;
-const MAX_STANDINGS = 3; // how many competitions to check per refresh
+const MAX_STANDINGS = 3;   // how many IN-SEASON competitions to actually use
+const MAX_ATTEMPTS = 6;    // how many entries to check before giving up — protects the rate limit
+                            // while still letting the loop skip past dead slots (e.g. an
+                            // ended World Cup) to reach a genuinely in-season league further down
 const MAX_TEAMS = 2;     // how many teams to backtest
 let cache = { at: 0, data: null, ttl: 0 };
 const FULL_MIN = 180, EMPTY_MIN = 8;
@@ -81,11 +85,15 @@ export default async function handler(req, res) {
     const teams = [];            // for the dashboard
     const teamIds = [];          // {id, name} — every team in the chosen league, checked later
     let league = null, leagueId = null;
-    // sequential standings, capped — naturally throttled and rate-limit safe
-    for (let i = 0; i < PRIORITY.length && i < MAX_STANDINGS; i++) {
+    let found = 0; // in-season competitions actually used — capped at MAX_STANDINGS
+    // sequential standings — tries up to MAX_ATTEMPTS entries (skipping dead/out-of-season
+    // ones for free) but only ever USES the first MAX_STANDINGS that are genuinely live,
+    // so an ended tournament's empty slot can't starve out a league further down the list
+    for (let i = 0; i < PRIORITY.length && i < MAX_ATTEMPTS && found < MAX_STANDINGS; i++) {
       const [id, name] = PRIORITY[i];
       const j = await getJson(`https://api.football-data.org/v4/competitions/${id}/standings`, key);
       if (!j || !inSeason(j.season)) continue;
+      found++;
       const tbl = (j.standings || []).find(b => b.type === 'TOTAL');
       (tbl?.table || []).forEach(row => {
         if ((row.playedGames || 0) >= 3) {
