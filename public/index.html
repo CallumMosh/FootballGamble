@@ -55,7 +55,7 @@
     backdrop-filter:blur(2px);transition:border-color .15s,transform .15s,background .15s}
   .fixture-btn:hover{border-color:var(--pitch);transform:translateY(-1px);background:var(--panel-2)}
   .fixture-btn.active{border-color:var(--pitch);background:var(--panel-2)}
-  .fixture-teams{font-weight:600;font-size:16px}
+  .fixture-teams{font-weight:600;font-size:16px;min-width:0}
   .fixture-teams .vs{color:var(--muted);font-weight:400;margin:0 8px}
   .crest{width:18px;height:18px;object-fit:contain;vertical-align:-3px;margin-right:7px}
   .fixture-right{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
@@ -70,7 +70,7 @@
   .disclaimer{font-size:13px;color:#ffffff;text-shadow:0 1px 6px rgba(0,0,0,.5);border-left:2px solid rgba(255,255,255,.35);padding-left:12px;margin:14px 0 4px}
   .market{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-bottom:14px;backdrop-filter:blur(2px)}
   .market-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
-  .market-name{font-weight:700;font-size:17px}
+  .market-name{font-weight:700;font-size:17px;min-width:0}
   .market-stat{font-family:'Space Mono',monospace;font-size:26px;font-weight:700}
   .bar{height:7px;background:var(--panel-2);border-radius:999px;margin:14px 0 12px;overflow:hidden}
   .bar>div{height:100%;border-radius:999px;transition:width .5s ease}
@@ -95,7 +95,7 @@
   .games-toggle{all:unset;cursor:pointer;display:inline-block;margin-top:12px;font-family:'Space Mono',monospace;
     font-size:12px;color:var(--pitch);border:1px solid var(--line);border-radius:7px;padding:5px 10px}
   .games-toggle:hover{border-color:var(--pitch)}
-  .games-wrap{margin-top:12px}
+  .games-wrap{margin-top:12px;overflow-x:auto;-webkit-overflow-scrolling:touch}
   table.games{width:100%;border-collapse:collapse;font-size:13px}
   table.games th{text-align:left;font-weight:600;color:var(--muted);font-size:11px;text-transform:uppercase;
     letter-spacing:.5px;padding:6px 8px;border-bottom:1px solid var(--line)}
@@ -153,6 +153,7 @@
   .table-group-name{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--pitch);margin:14px 0 8px}
   .table-group-name:first-child{margin-top:0}
   table.league-table{width:100%;border-collapse:collapse;font-size:13px}
+  .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
   table.league-table th{text-align:left;font-weight:600;color:var(--muted);font-size:10px;text-transform:uppercase;
     letter-spacing:.5px;padding:6px 6px;border-bottom:1px solid var(--line)}
   table.league-table th.num,table.league-table td.num{text-align:center}
@@ -161,8 +162,8 @@
   table.league-table td.team{font-family:'Archivo',sans-serif;font-weight:600;color:var(--text);white-space:nowrap}
   table.league-table td.pts{font-weight:700;color:var(--pitch)}
   table.league-table tr:last-child td{border-bottom:none}
-  .dash-item .nm{font-weight:600}.dash-item .nm small{color:var(--muted);font-weight:400;margin-left:6px}
-  .dash-item .st{font-family:'Space Mono',monospace;color:var(--muted);white-space:nowrap}
+  .dash-item .nm{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dash-item .nm small{color:var(--muted);font-weight:400;margin-left:6px}
+  .dash-item .st{font-family:'Space Mono',monospace;color:var(--muted);white-space:nowrap;flex-shrink:0}
   .track-head{font-size:15px;line-height:1.5;background:rgba(45,212,191,.06);border:1px solid var(--line);
     border-left:3px solid var(--pitch);border-radius:10px;padding:13px 15px;margin:4px 0 16px}
   .track-head b{color:var(--text)}.track-head span{color:var(--muted);font-size:13px}
@@ -564,10 +565,10 @@ async function loadTable(cid, name) {
     }
     body.innerHTML = groups.map(g => `
       ${g.name ? `<div class="table-group-name">${g.name}</div>` : ''}
-      <table class="league-table"><thead><tr>
+      <div class="table-scroll"><table class="league-table"><thead><tr>
         <th></th><th>Team</th><th class="num">P</th><th class="num">W</th><th class="num">D</th><th class="num">L</th>
         <th class="num">GD</th><th class="num">Pts</th></tr></thead>
-        <tbody>${tableRows(g.rows)}</tbody></table>`).join('');
+        <tbody>${tableRows(g.rows)}</tbody></table></div>`).join('');
   } catch (e) {
     body.innerHTML = `<div class="sub">Couldn't load the ${name} table right now — try again in a moment.</div>`;
   }
