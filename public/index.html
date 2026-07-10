@@ -16,10 +16,11 @@
   *{box-sizing:border-box;margin:0;padding:0}
   html{overflow-x:hidden}
   body{
-    background:var(--bg);overflow-x:hidden;
+    background:repeating-linear-gradient(180deg,#2d8a4a 0 40px,#256f3c 40px 80px) fixed,var(--bg);
+    overflow-x:hidden;
     color:var(--text);font-family:'Archivo',system-ui,sans-serif;line-height:1.5;min-height:100vh;
   }
-  .pitch-bg{position:fixed;top:-2px;right:-2px;bottom:-2px;left:-2px;z-index:-1;pointer-events:none}
+  .pitch-bg{position:fixed;inset:0;z-index:-1;pointer-events:none}
   .app{max-width:880px;margin:0 auto;padding:32px 20px 80px}
   .brand{font-family:'Montserrat',sans-serif;font-weight:800;font-size:clamp(38px,8vw,60px);letter-spacing:.5px;line-height:.95;text-transform:uppercase;text-shadow:0 1px 6px rgba(0,0,0,.5)}
   .brand span{color:#ffffff;text-shadow:0 1px 6px rgba(0,0,0,.5)}
@@ -192,13 +193,6 @@
 </head>
 <body>
 <svg class="pitch-bg" viewBox="0 0 400 620" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-  <defs>
-    <pattern id="mow" width="400" height="80" patternUnits="userSpaceOnUse">
-      <rect width="400" height="40" fill="#2d8a4a"/>
-      <rect y="40" width="400" height="40" fill="#256f3c"/>
-    </pattern>
-  </defs>
-  <rect x="0" y="0" width="400" height="620" fill="url(#mow)"/>
   <rect x="20" y="20" width="360" height="580" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5"/>
   <line x1="20" y1="310" x2="380" y2="310" stroke="rgba(255,255,255,.5)" stroke-width="2.5"/>
   <circle cx="200" cy="310" r="55" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5"/>
