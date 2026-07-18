@@ -739,7 +739,7 @@ async function loadFeatured(fx) {
 async function loadFixtures() {
   try {
     const data = await fetchJson('/api/fixtures');
-    if (!data.length) { noteEl.textContent = 'No upcoming fixtures in the next 10 days.'; return; }
+    if (!data.length) { noteEl.textContent = 'No upcoming fixtures in the next 7 days.'; return; }
     noteEl.style.display = 'none';
     loadFeatured(data[0]); // soonest fixture overall — data arrives sorted soonest-first
 
