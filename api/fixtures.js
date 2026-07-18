@@ -34,13 +34,13 @@ export default async function handler(req, res) {
 
   try {
     const today = new Date();
-    const tenDays = new Date(today.getTime() + 10 * 24 * 60 * 60 * 1000);
+    const sevenDays = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
     const ids = Object.keys(LEAGUE_IDS).join(',');
 
     // ONE request gets fixtures across all the competitions above.
     // We don't filter by status in the URL (it's unreliable) — we filter below.
     const url = `https://api.football-data.org/v4/matches?competitions=${ids}` +
-                `&dateFrom=${ymd(today)}&dateTo=${ymd(tenDays)}`;
+                `&dateFrom=${ymd(today)}&dateTo=${ymd(sevenDays)}`;
 
     const r = await fetch(url, { headers: { 'X-Auth-Token': key } });
     if (!r.ok) {
