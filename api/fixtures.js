@@ -13,6 +13,8 @@ const LEAGUE_IDS = {
   2019: 'Serie A',
   2002: 'Bundesliga',
   2015: 'Ligue 1',
+  2003: 'Eredivisie',
+  2017: 'Primeira Liga',
   2000: 'World Cup',     // free on football-data — live through summer 2026
   2013: 'Brasileirão',   // Brazil's league runs through our summer too
 };
