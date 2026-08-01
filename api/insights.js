@@ -10,6 +10,7 @@ const PRIORITY = [
   [2021, 'Premier League'], [2016, 'Championship'], [2014, 'La Liga'],
   [2013, 'Brasileirão'],
   [2001, 'Champions League'], [2019, 'Serie A'], [2002, 'Bundesliga'], [2015, 'Ligue 1'],
+  [2003, 'Eredivisie'], [2017, 'Primeira Liga'],
 ];
 const WINDOW = 6;
 const MAX_STANDINGS = 3;   // how many IN-SEASON competitions to actually use
