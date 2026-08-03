@@ -7,7 +7,7 @@
 // Cached per competition (tables move slowly) to spare the rate limit.
 
 const cache = {}; // { competitionId: { at, data } }
-const CACHE_MINUTES = 120;
+const CACHE_MINUTES = 240;
 
 export default async function handler(req, res) {
   const key = process.env.FOOTBALL_DATA_KEY;
