@@ -19,7 +19,7 @@ const MAX_ATTEMPTS = 6;    // how many entries to check before giving up — pro
                             // ended World Cup) to reach a genuinely in-season league further down
 const MAX_TEAMS = 2;     // how many teams to backtest
 let cache = { at: 0, data: null, ttl: 0 };
-const FULL_MIN = 180, EMPTY_MIN = 8;
+const FULL_MIN = 360, EMPTY_MIN = 8;
 
 const per = (n, g) => g > 0 ? +(n / g).toFixed(2) : 0;
 const winsInForm = f => (String(f || '').match(/W/g) || []).length;
