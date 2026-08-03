@@ -5,7 +5,7 @@
 // Cached hard per fixture since head-to-head history barely changes day to day.
 
 const cache = {}; // { matchId: { at, data } }
-const CACHE_MINUTES = 360; // 6h
+const CACHE_MINUTES = 1440; // 24h
 
 export default async function handler(req, res) {
   const key = process.env.FOOTBALL_DATA_KEY;
