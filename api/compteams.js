@@ -6,7 +6,7 @@
 // One cached call per competition powers every fixture in it (rate-limit friendly).
 
 const cache = {}; // { competitionId: { at, matches } }
-const CACHE_MINUTES = 45;
+const CACHE_MINUTES = 90;
 const WINDOW = 6;
 
 function simplify(m, teamId) {
