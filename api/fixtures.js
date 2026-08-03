@@ -23,7 +23,7 @@ const LEAGUE_IDS = {
 const UPCOMING = ['SCHEDULED', 'TIMED'];
 
 let cache = { at: 0, data: null };
-const CACHE_MINUTES = 30;
+const CACHE_MINUTES = 60;
 const ymd = d => d.toISOString().slice(0, 10);
 
 export default async function handler(req, res) {
