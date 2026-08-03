@@ -798,10 +798,11 @@ async function getForm(fx) {
   let out;
   if (fx.competitionId) {
     const r = await fetchJson(`/api/compteams?competition=${fx.competitionId}&home=${fx.homeId}&away=${fx.awayId}`);
-    out = { home: r.home || [], away: r.away || [] };
+    out = { home: r.home || [], away: r.away || [],
+             homeSpansPriorSeason: !!r.homeSpansPriorSeason, awaySpansPriorSeason: !!r.awaySpansPriorSeason };
   } else {
     const [h, a] = await Promise.all([getTeam(fx.homeId), getTeam(fx.awayId)]);
-    out = { home: h.results || [], away: a.results || [] };
+    out = { home: h.results || [], away: a.results || [], homeSpansPriorSeason: false, awaySpansPriorSeason: false };
   }
   formCache[k] = out;
   return out;
@@ -846,7 +847,7 @@ async function showFixture(fx) {
     const positions = (pos.total >= 10 && homePos && awayPos)
       ? { homePos, awayPos, total: pos.total }
       : null;
-    renderFixture(fx, home, away, positions, h2h);
+    renderFixture(fx, home, away, positions, h2h, form.homeSpansPriorSeason, form.awaySpansPriorSeason);
   } catch (e) {
     resultsEl.innerHTML = `<p class="note">Couldn't load that one: ${e.message}</p>`;
   }
@@ -894,7 +895,7 @@ function computeWhoWins(fx, home, away, positions, h2h) {
 }
 
 // draws everything from two teams' last-WINDOW result arrays
-function renderFixture(fx, home, away, positions, h2h) {
+function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awaySpansPriorSeason) {
     const tag = `${fx.home} v ${fx.away}`;
     const hasHT = home.some(m => m.htGf != null) && away.some(m => m.htGf != null);
     const scoreTest = m => m.gf > 0;
@@ -973,9 +974,16 @@ function renderFixture(fx, home, away, positions, h2h) {
 
     const badges = g => form(g).map(r => `<span class="badge ${r}">${r}</span>`).join('');
 
-    const lookbackText = home.length === away.length
+    let lookbackText = home.length === away.length
       ? `Based on each side's last ${home.length} games.`
       : `Based on recent form — ${fx.home}: last ${home.length}, ${fx.away}: last ${away.length}.`;
+    const priorSeasonSides = [];
+    if (homeSpansPriorSeason) priorSeasonSides.push(fx.home);
+    if (awaySpansPriorSeason) priorSeasonSides.push(fx.away);
+    if (priorSeasonSides.length) {
+      const verb = priorSeasonSides.length > 1 ? "haven't" : "hasn't";
+      lookbackText += ` ${priorSeasonSides.join(' and ')} ${verb} played enough this season yet, so this includes some games from last season.`;
+    }
     resultsEl.innerHTML = `
       <div class="matchup">${fx.home} <span class="at">vs</span> ${fx.away}</div>
       ${fx.date ? `<div class="kickoff">Kick-off: ${ukTimeFull(fx.date)}</div>` : ''}
