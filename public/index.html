@@ -225,6 +225,7 @@
   <section class="dash" id="insight"></section>
 
   <div class="picker-label" style="margin-top:8px">Upcoming fixtures</div>
+  <div class="table-pills" id="leagueFilter"></div>
   <div class="fixtures" id="fixtures"></div>
   <div class="note" id="note">Loading fixtures…</div>
 
@@ -736,6 +737,8 @@ async function loadFeatured(fx) {
   } catch (e) { el.style.display = 'none'; } // fails quietly — the fixture is still there in the normal list
 }
 
+let fixtureGroups = {}, fixtureLeagueOrder = [], activeLeagueFilter = 'All';
+
 async function loadFixtures() {
   try {
     const data = await fetchJson('/api/fixtures');
@@ -745,30 +748,53 @@ async function loadFixtures() {
 
     // group by league — data arrives sorted soonest-first, so each group's first
     // entry is that league's earliest fixture, which we use to order the groups too
-    const groups = {};
-    data.forEach(fx => { (groups[fx.league] ||= []).push(fx); });
-    const leagueOrder = Object.keys(groups).sort((a, b) => new Date(groups[a][0].date) - new Date(groups[b][0].date));
+    fixtureGroups = {};
+    data.forEach(fx => { (fixtureGroups[fx.league] ||= []).push(fx); });
+    fixtureLeagueOrder = Object.keys(fixtureGroups).sort((a, b) => new Date(fixtureGroups[a][0].date) - new Date(fixtureGroups[b][0].date));
 
-    leagueOrder.forEach(league => {
-      const heading = document.createElement('div');
-      heading.className = 'fixture-group-h';
-      heading.textContent = league;
-      fixturesEl.appendChild(heading);
-
-      groups[league].forEach(fx => {
-        const btn = document.createElement('button');
-        btn.className = 'fixture-btn';
-        btn.innerHTML = `<span class="fixture-teams">${fx.crest ? `<img class="crest" src="${fx.crest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${fx.home}<span class="vs">v</span>${fx.awayCrest ? `<img class="crest" src="${fx.awayCrest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${fx.away}</span>
-                         <span class="fixture-time">${ukTimeShort(fx.date)}</span>`;
-        btn.onclick = () => {
-          document.querySelectorAll('.fixture-btn').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          showFixture(fx);
-        };
-        fixturesEl.appendChild(btn);
-      });
-    });
+    renderLeagueFilter();
+    renderFixtureGroups('All');
   } catch (e) { noteEl.textContent = `Couldn't load fixtures: ${e.message}`; }
+}
+
+// one pill per league that actually has fixtures right now, plus "All" — tapping
+// filters the list below without needing to re-fetch anything, since we already
+// have every league's fixtures grouped client-side
+function renderLeagueFilter() {
+  const el = document.getElementById('leagueFilter');
+  const pill = (label, active) => `<button class="table-pill${active ? ' active' : ''}" data-league="${label}">${label}</button>`;
+  el.innerHTML = pill('All', true) + fixtureLeagueOrder.map(l => pill(l, false)).join('');
+  el.querySelectorAll('.table-pill').forEach(btn => {
+    btn.onclick = () => {
+      activeLeagueFilter = btn.dataset.league;
+      el.querySelectorAll('.table-pill').forEach(b => b.classList.toggle('active', b === btn));
+      renderFixtureGroups(activeLeagueFilter);
+    };
+  });
+}
+
+function renderFixtureGroups(filterLeague) {
+  fixturesEl.innerHTML = '';
+  const leagues = filterLeague === 'All' ? fixtureLeagueOrder : fixtureLeagueOrder.filter(l => l === filterLeague);
+  leagues.forEach(league => {
+    const heading = document.createElement('div');
+    heading.className = 'fixture-group-h';
+    heading.textContent = league;
+    fixturesEl.appendChild(heading);
+
+    fixtureGroups[league].forEach(fx => {
+      const btn = document.createElement('button');
+      btn.className = 'fixture-btn';
+      btn.innerHTML = `<span class="fixture-teams">${fx.crest ? `<img class="crest" src="${fx.crest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${fx.home}<span class="vs">v</span>${fx.awayCrest ? `<img class="crest" src="${fx.awayCrest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${fx.away}</span>
+                       <span class="fixture-time">${ukTimeShort(fx.date)}</span>`;
+      btn.onclick = () => {
+        document.querySelectorAll('.fixture-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        showFixture(fx);
+      };
+      fixturesEl.appendChild(btn);
+    });
+  });
 }
 
 // per-session caches — browsing fixtures shouldn't re-fetch the same teams/tables
