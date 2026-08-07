@@ -36,10 +36,12 @@ export default async function handler(req, res) {
 
   try {
     const today = new Date();
-    const windowEnd = new Date(today.getTime() + 11 * 24 * 60 * 60 * 1000);
-    // (11 days, not 10 — a one-day safety buffer in case the API treats dateTo as
-    // exclusive rather than inclusive, which would otherwise clip off the last
-    // day of the window right when something's actually kicking off)
+    const windowEnd = new Date(today.getTime() + 10 * 24 * 60 * 60 * 1000);
+    // dateTo is EXCLUSIVE on football-data's API (confirmed in their own docs) — so
+    // "today + 10 days" already correctly covers exactly 10 calendar days (today
+    // through 9 days from now). No extra padding needed on top of that; adding one
+    // (as an earlier version of this file did) pushes the requested range to 11
+    // days, which the free tier's date-range cap on this endpoint rejects outright.
     const ids = Object.keys(LEAGUE_IDS).join(',');
 
     // ONE request gets fixtures across all the competitions above.
