@@ -276,6 +276,16 @@ const GLOSS = {
   score:"To Score: the team scores at least one goal — adjusted for how often the opponent concedes.",
   clean:"Clean Sheet: the team concedes zero goals — adjusted for how often the opponent scores.",
   h2h:  "Head to Head: how these two specific teams have fared against each other in past meetings, across any competition — not each team's general form.",
+  dchand:"Double Chance: this team either wins or draws — only losing rules it out. Adjusted for how often the opponent themselves tends to win.",
+  dcwin:"Either Team Wins: the match doesn't end in a draw, pooled from both sides' own recent games.",
+  draw: "Draw: the match finishes level, pooled from both sides' own recent games.",
+  wtn:  "Win To Nil: this team wins and keeps a clean sheet in the same game — checked directly, not two separate stats multiplied together. Adjusted for the opponent's own scoring record.",
+  fh1:  "Scores In First Half: the team is on the scoresheet by half-time, regardless of the final result.",
+  fhbtts:"BTTS In First Half: both teams have scored by half-time.",
+  htftw:"Leads At Half-Time And Wins: the team is ahead at the break and goes on to win the match.",
+  sh15: "Over 1.5 Second-Half Goals: 2 or more goals are scored after half-time, pooled from both sides' own recent games.",
+  bttso25:"BTTS & Over 2.5: both teams score, and the match has 3 or more goals total — checked together, not combined afterwards.",
+  conc15:"Under 1.5 Goals Conceded: the team concedes 0 or 1 goals — a softer bar than a clean sheet. Adjusted for the opponent's own scoring record.",
 };
 const infoIcon = key => GLOSS[key] ? `<span class="info" tabindex="0" data-tip="${GLOSS[key]}">i</span>` : '';
 
@@ -926,6 +936,10 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
     const hasHT = home.some(m => m.htGf != null) && away.some(m => m.htGf != null);
     const scoreTest = m => m.gf > 0;
     const cleanTest = m => m.ga === 0;
+    // computed early so every section can use them for opponent-tempering, not just
+    // the "Each team" cards further down
+    const hScore = breakdown(home, scoreTest).rate, aClean = breakdown(away, cleanTest).rate;
+    const aScore = breakdown(away, scoreTest).rate, hClean = breakdown(home, cleanTest).rate;
 
     /* ---- HEAD TO HEAD (last meetings between these two, any competition) ---- */
     let h2hCard = '';
@@ -957,20 +971,56 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
     /* ---- WHO WINS? (form leads; league position and head-to-head play supporting roles) ---- */
     const { winTest, wLean } = computeWhoWins(fx, home, away, positions, h2h);
     const whoWins = compareCard('Who wins?', 'win', fx.home, home, fx.away, away, winTest, wLean, 'won', 'didn\u2019t');
+    const hWinRate = breakdown(home, winTest).rate, aWinRate = breakdown(away, winTest).rate;
 
-    /* ---- AHEAD AT HALF-TIME ---- */
+    /* ---- ALTERNATIVE RESULT MARKETS (double chance, draw) ---- */
+    const notLostTest = m => m.gf >= m.ga;
+    const altResults = [
+      temperedCard(`${fx.home} — Home or Draw`, 'dchand', home, notLostTest, 100 - aWinRate, `${fx.away} win ${aWinRate}% of their own games`,
+        'A losing result looks unlikely.', 'The visitors have been winning plenty themselves.', 'didn\u2019t lose', 'lost', fx.home, tag),
+      temperedCard(`${fx.away} — Away or Draw`, 'dchand', away, notLostTest, 100 - hWinRate, `${fx.home} win ${hWinRate}% of their own games`,
+        'A losing result looks unlikely.', 'The hosts have been winning plenty themselves.', 'didn\u2019t lose', 'lost', fx.away, tag),
+      combinedCard('Either Team Wins (No Draw)', 'dcwin', home, away, m => m.gf !== m.ga, 'Decisive results have been common.', 'Draws have cropped up a fair bit.', fx.home, fx.away, 'not drawn', tag),
+      combinedCard('Draw', 'draw', home, away, m => m.gf === m.ga, 'Level finishes keep happening.', 'Draws have been rare.', fx.home, fx.away, 'drawn', tag),
+    ];
+
+    /* ---- AHEAD AT HALF-TIME (+ other first-half markets) ---- */
     let firstHalf = '';
+    let hG = [], aG = [];
     if (hasHT) {
-      const hG = home.filter(m => m.htGf != null), aG = away.filter(m => m.htGf != null);
+      hG = home.filter(m => m.htGf != null); aG = away.filter(m => m.htGf != null);
       const leadTest = m => m.htGf > m.htGa;
       const hLead = breakdown(hG, leadTest), aLead = breakdown(aG, leadTest);
       let fLean;
       if (hLead.rate - aLead.rate >= 20)      fLean = `<b>${fx.home}</b> tend to be in front at the break.`;
       else if (aLead.rate - hLead.rate >= 20) fLean = `<b>${fx.away}</b> tend to lead at half-time.`;
       else                                    fLean = `Neither side reliably leads at the break — a fast start from either is plausible.`;
-      firstHalf = compareCard('Ahead at half-time', 'half', fx.home, hG, fx.away, aG, leadTest, fLean, 'ahead', 'not',
-        'Half-time lead only — a proxy for an early goal, since the free data has scores but not goal times.');
+      const htCards = [
+        compareCard('Ahead at half-time', 'half', fx.home, hG, fx.away, aG, leadTest, fLean, 'ahead', 'not',
+          'Half-time lead only — a proxy for an early goal, since the free data has scores but not goal times.'),
+        teamCard(`${fx.home} scores in first half`, 'fh1', hG, m => m.htGf > 0, 'A quick start looks likely.', 'Slow starters lately.', 'scored', 'blank', fx.home, tag),
+        teamCard(`${fx.away} scores in first half`, 'fh1', aG, m => m.htGf > 0, 'A quick start looks likely.', 'Slow starters lately.', 'scored', 'blank', fx.away, tag),
+        combinedCard('BTTS In First Half', 'fhbtts', hG, aG, m => m.htGf > 0 && m.htGa > 0, 'Both sides have been finding the net early.', 'A quiet first half looks more likely.', fx.home, fx.away, 'both scored by HT', tag),
+      ];
+      firstHalf = htCards.join('');
     }
+
+    /* ---- SECOND HALF & COMBINED MARKETS ---- */
+    const secondHalf = [];
+    if (hasHT) {
+      secondHalf.push(
+        teamCard(`${fx.home} leads at HT and wins`, 'htftw', hG, m => m.htGf > m.htGa && m.gf > m.ga, 'When on top at the break, they tend to see it through.', 'A half-time lead hasn\u2019t always held up.', 'did', 'didn\u2019t', fx.home, tag),
+        teamCard(`${fx.away} leads at HT and wins`, 'htftw', aG, m => m.htGf > m.htGa && m.gf > m.ga, 'When on top at the break, they tend to see it through.', 'A half-time lead hasn\u2019t always held up.', 'did', 'didn\u2019t', fx.away, tag),
+        combinedCard('Over 1.5 Second-Half Goals', 'sh15', hG, aG, m => (m.gf - m.htGf) + (m.ga - m.htGa) > 1.5, 'The second half has usually had plenty in it.', 'Second halves have been quiet.', fx.home, fx.away, 'over 1.5 in 2nd half', tag),
+      );
+    }
+    secondHalf.push(
+      temperedCard(`${fx.home} — Win To Nil`, 'wtn', home, m => m.gf > m.ga && m.ga === 0, 100 - aScore, `${fx.away} score in ${aScore}% of their own games`,
+        'A shutout win looks plausible.', 'The visitors have been getting on the scoresheet themselves.', 'won to nil', 'didn\u2019t', fx.home, tag),
+      temperedCard(`${fx.away} — Win To Nil`, 'wtn', away, m => m.gf > m.ga && m.ga === 0, 100 - hScore, `${fx.home} score in ${hScore}% of their own games`,
+        'A shutout win looks plausible.', 'The hosts have been getting on the scoresheet themselves.', 'won to nil', 'didn\u2019t', fx.away, tag),
+      combinedCard('BTTS & Over 2.5', 'bttso25', home, away, m => m.gf > 0 && m.ga > 0 && m.gf + m.ga > 2.5, 'These games tend to have goals at both ends.', 'This combination hasn\u2019t landed often.', fx.home, fx.away, 'BTTS & over 2.5', tag),
+    );
 
     /* ---- GOALS (pooled) ---- */
     const goals = [
@@ -981,8 +1031,6 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
     ];
 
     /* ---- MATCHUP ANGLE (attack vs defence narrative) ---- */
-    const hScore = breakdown(home, scoreTest).rate, aClean = breakdown(away, cleanTest).rate;
-    const aScore = breakdown(away, scoreTest).rate, hClean = breakdown(home, cleanTest).rate;
     const angles = [];
     if (hScore >= 65 && aClean <= 35)
       angles.push(`<b>${fx.home}</b> have scored in ${hScore}% of recent games, while <b>${fx.away}</b> kept a clean sheet in just ${aClean}% — the home attack looks the stronger force here.`);
@@ -996,6 +1044,8 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
       temperedCard(`${fx.away} to score`,    'score', away, scoreTest, 100 - hClean, `${fx.home} concede in ${100 - hClean}%`, 'Reliable in front of goal.', 'Blunt going forward lately.', 'scored', 'blank', fx.away, tag),
       temperedCard(`${fx.home} clean sheet`, 'clean', home, cleanTest, 100 - aScore, `${fx.away} fail to score in ${100 - aScore}%`, 'Solid at the back.', 'Leaky lately.', 'kept', 'conceded', fx.home, tag),
       temperedCard(`${fx.away} clean sheet`, 'clean', away, cleanTest, 100 - hScore, `${fx.home} fail to score in ${100 - hScore}%`, 'Solid at the back.', 'Leaky lately.', 'kept', 'conceded', fx.away, tag),
+      temperedCard(`${fx.home} — Under 1.5 Conceded`, 'conc15', home, m => m.ga <= 1, 100 - aScore, `${fx.away} score in ${aScore}%`, 'Rarely concede more than one.', 'Have been shipping goals lately.', 'held to 1 or fewer', 'conceded 2+', fx.home, tag),
+      temperedCard(`${fx.away} — Under 1.5 Conceded`, 'conc15', away, m => m.ga <= 1, 100 - hScore, `${fx.home} score in ${hScore}%`, 'Rarely concede more than one.', 'Have been shipping goals lately.', 'held to 1 or fewer', 'conceded 2+', fx.away, tag),
     ];
 
     const badges = g => form(g).map(r => `<span class="badge ${r}">${r}</span>`).join('');
@@ -1020,8 +1070,10 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
         <div class="form-team"><span class="label">${fx.away} form</span>${badges(away)}</div>
       </div>
       <div class="section-h">Result</div>${whoWins}
+      <div class="section-h">Alternative result markets</div>${altResults.join('')}
       ${h2hCard ? `<div class="section-h">Head to head</div>${h2hCard}` : ''}
       ${firstHalf ? `<div class="section-h">First half</div>${firstHalf}` : ''}
+      <div class="section-h">Second half &amp; combined markets</div>${secondHalf.join('')}
       <div class="section-h">Goals</div>${goals.join('')}
       <div class="section-h">Each team</div>${angleHtml}${da.join('')}`;
     resultsEl.scrollIntoView({ behavior:'smooth', block:'nearest' });
