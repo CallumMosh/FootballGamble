@@ -1070,12 +1070,32 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
         <div class="form-team"><span class="label">${fx.away} form</span>${badges(away)}</div>
       </div>
       <div class="section-h">Result</div>${whoWins}
-      <div class="section-h">Alternative result markets</div>${altResults.join('')}
       ${h2hCard ? `<div class="section-h">Head to head</div>${h2hCard}` : ''}
-      ${firstHalf ? `<div class="section-h">First half</div>${firstHalf}` : ''}
-      <div class="section-h">Second half &amp; combined markets</div>${secondHalf.join('')}
-      <div class="section-h">Goals</div>${goals.join('')}
-      <div class="section-h">Each team</div>${angleHtml}${da.join('')}`;
+
+      <div class="insight-tabs" id="matchTabs">
+        <button class="insight-tab active" data-pane="match-pane-result">Match Result</button>
+        <button class="insight-tab" data-pane="match-pane-halves">Halves</button>
+        <button class="insight-tab" data-pane="match-pane-form">Team Form</button>
+      </div>
+      <div class="insight-pane" id="match-pane-result">
+        <div class="section-h">Alternative result markets</div>${altResults.join('')}
+        <div class="section-h">Goals</div>${goals.join('')}
+      </div>
+      <div class="insight-pane" id="match-pane-halves" style="display:none">
+        ${firstHalf ? `<div class="section-h">First half</div>${firstHalf}` : ''}
+        <div class="section-h">Second half &amp; combined markets</div>${secondHalf.join('')}
+      </div>
+      <div class="insight-pane" id="match-pane-form" style="display:none">
+        <div class="section-h">Each team</div>${angleHtml}${da.join('')}
+      </div>`;
+    document.getElementById('matchTabs').querySelectorAll('.insight-tab').forEach(btn => {
+      btn.onclick = () => {
+        document.getElementById('matchTabs').querySelectorAll('.insight-tab').forEach(b => b.classList.toggle('active', b === btn));
+        ['match-pane-result', 'match-pane-halves', 'match-pane-form'].forEach(id => {
+          document.getElementById(id).style.display = (id === btn.dataset.pane) ? 'block' : 'none';
+        });
+      };
+    });
     resultsEl.scrollIntoView({ behavior:'smooth', block:'nearest' });
     syncSlipButtons();
 }
