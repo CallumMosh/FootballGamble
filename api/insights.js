@@ -18,6 +18,8 @@ const MAX_ATTEMPTS = 6;    // how many entries to check before giving up — pro
                             // while still letting the loop skip past dead slots (e.g. an
                             // ended World Cup) to reach a genuinely in-season league further down
 const MAX_TEAMS = 2;     // how many teams to backtest
+const REQUEST_GAP_MS = 400; // pause between each sequential standings check, so this
+                             // burst alone doesn't eat the whole rate-limit budget
 let cache = { at: 0, data: null, ttl: 0 };
 const FULL_MIN = 360, EMPTY_MIN = 8;
 
@@ -86,6 +88,7 @@ export default async function handler(req, res) {
   if (req.query.debug === '1') {
     const report = [];
     for (const [id, name] of PRIORITY) {
+      if (report.length > 0) await new Promise(s => setTimeout(s, REQUEST_GAP_MS));
       const j = await getJson(`https://api.football-data.org/v4/competitions/${id}/standings`, key);
       report.push({
         competition: name, id,
@@ -108,8 +111,12 @@ export default async function handler(req, res) {
     let found = 0; // in-season competitions actually used — capped at MAX_STANDINGS
     // sequential standings — tries up to MAX_ATTEMPTS entries (skipping dead/out-of-season
     // ones for free) but only ever USES the first MAX_STANDINGS that are genuinely live,
-    // so an ended tournament's empty slot can't starve out a league further down the list
+    // so an ended tournament's empty slot can't starve out a league further down the list.
+    // A small gap between each request means this burst alone is less likely to exhaust
+    // the shared 10-req/min budget, especially when it lands close to other site activity
+    // (a fixtures fetch, another visitor, or repeated manual testing).
     for (let i = 0; i < PRIORITY.length && i < MAX_ATTEMPTS && found < MAX_STANDINGS; i++) {
+      if (i > 0) await new Promise(s => setTimeout(s, REQUEST_GAP_MS));
       const [id, name] = PRIORITY[i];
       const j = await getJson(`https://api.football-data.org/v4/competitions/${id}/standings`, key);
       if (!j || !inSeason(j.season)) continue;
