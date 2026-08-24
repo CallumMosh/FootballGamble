@@ -508,6 +508,7 @@ function renderTrack(d) {
 const TABLE_LEAGUES = [
   [2021, 'Premier League'], [2016, 'Championship'], [2001, 'Champions League'],
   [2014, 'La Liga'], [2019, 'Serie A'], [2002, 'Bundesliga'], [2015, 'Ligue 1'],
+  [2003, 'Eredivisie'], [2017, 'Primeira Liga'],
   [2013, 'Brasileirão'], [2000, 'World Cup'],
 ];
 let activeTableCid = null;
@@ -1074,11 +1075,14 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
 
       <div class="insight-tabs" id="matchTabs">
         <button class="insight-tab active" data-pane="match-pane-result">Match Result</button>
+        <button class="insight-tab" data-pane="match-pane-goals">Goals</button>
         <button class="insight-tab" data-pane="match-pane-halves">Halves</button>
         <button class="insight-tab" data-pane="match-pane-form">Team Form</button>
       </div>
       <div class="insight-pane" id="match-pane-result">
         <div class="section-h">Alternative result markets</div>${altResults.join('')}
+      </div>
+      <div class="insight-pane" id="match-pane-goals" style="display:none">
         <div class="section-h">Goals</div>${goals.join('')}
       </div>
       <div class="insight-pane" id="match-pane-halves" style="display:none">
@@ -1091,7 +1095,7 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
     document.getElementById('matchTabs').querySelectorAll('.insight-tab').forEach(btn => {
       btn.onclick = () => {
         document.getElementById('matchTabs').querySelectorAll('.insight-tab').forEach(b => b.classList.toggle('active', b === btn));
-        ['match-pane-result', 'match-pane-halves', 'match-pane-form'].forEach(id => {
+        ['match-pane-result', 'match-pane-goals', 'match-pane-halves', 'match-pane-form'].forEach(id => {
           document.getElementById(id).style.display = (id === btn.dataset.pane) ? 'block' : 'none';
         });
       };
