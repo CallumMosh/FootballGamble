@@ -79,6 +79,25 @@ function backtestTeam(team, rows, out) {
 export default async function handler(req, res) {
   const key = process.env.FOOTBALL_DATA_KEY;
   if (!key) return res.status(500).json({ error: 'No API key set.' });
+
+  // temporary diagnostic mode — visit /api/insights?debug=1 to see exactly what each
+  // competition's season data looks like and whether inSeason() accepted or rejected
+  // it, without needing to expose the API key or touch the real cached response
+  if (req.query.debug === '1') {
+    const report = [];
+    for (const [id, name] of PRIORITY) {
+      const j = await getJson(`https://api.football-data.org/v4/competitions/${id}/standings`, key);
+      report.push({
+        competition: name, id,
+        fetchSucceeded: !!j,
+        season: j?.season || null,
+        inSeasonResult: j ? inSeason(j.season) : null,
+        now: new Date().toISOString(),
+      });
+    }
+    return res.status(200).json(report);
+  }
+
   if (cache.data && Date.now() - cache.at < cache.ttl) return res.status(200).json(cache.data);
   anyFail = false; // fresh build
 
