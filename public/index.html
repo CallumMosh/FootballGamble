@@ -21,10 +21,11 @@
     color:var(--text);font-family:'Archivo',system-ui,sans-serif;line-height:1.5;min-height:100vh;
   }
   .app{max-width:880px;margin:0 auto;padding:32px 20px 80px}
-  .brand{font-family:'Montserrat',sans-serif;font-weight:800;font-size:clamp(30px,6vw,42px);letter-spacing:.5px;line-height:.95;text-transform:uppercase}
+  .brand{font-family:'Montserrat',sans-serif;font-weight:800;font-size:clamp(21px,5vw,26px);letter-spacing:.5px;line-height:1;text-transform:uppercase}
   .brand span{color:var(--pitch)}
-  header{margin-bottom:24px}
-  .tagline{color:var(--muted);font-size:14px;margin-top:8px;max-width:52ch;line-height:1.6}.tagline b{color:var(--text)}
+  header{margin-bottom:22px}
+  .brand-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .tagline{color:var(--muted);font-size:12.5px;margin-top:6px;max-width:52ch;line-height:1.5}.tagline b{color:var(--text)}
   .picker-label,.section-h{font-size:12px;text-transform:uppercase;letter-spacing:2px;color:var(--muted)}
   .fixture-group-h{width:fit-content;font-family:'Space Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;
     color:var(--muted);margin:24px 0 12px}
@@ -63,7 +64,8 @@
   .fixture-btn.active{border-color:var(--pitch);background:var(--panel-2)}
   .fixture-teams{font-weight:500;font-size:15px;min-width:0}
   .fixture-teams .vs{color:var(--muted);font-weight:400;margin:0 8px}
-  .crest{width:18px;height:18px;object-fit:contain;vertical-align:-3px;margin-right:7px}
+  .crest{width:24px;height:24px;object-fit:contain;vertical-align:-7px;margin-right:8px;
+    background:var(--panel-2);border-radius:50%;padding:3px}
   .fixture-right{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
   .fixture-time{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);white-space:nowrap}
   .fixture-league{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);
@@ -78,6 +80,16 @@
   .matchup .at{color:#ffffff}
   .disclaimer{font-size:13px;color:var(--muted);border-left:2px solid var(--line);
     padding-left:14px;margin:16px 0 4px;line-height:1.6}
+  .cmp-card{background:var(--panel);border-radius:14px;padding:18px 20px;margin-bottom:10px}
+  .cmp-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:16px}
+  .cmp-row{margin-bottom:14px}
+  .cmp-row:last-child{margin-bottom:0}
+  .cmp-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}
+  .cmp-top .v{font-family:'Space Mono',monospace;font-size:13px;color:var(--text);min-width:40px}
+  .cmp-top .v.r{text-align:right}
+  .cmp-top .l{font-size:11px;color:var(--muted);text-align:center;flex:1;min-width:0}
+  .cmp-bars{display:flex;gap:3px}
+  .cmp-bars i{display:block;height:4px;border-radius:999px}
   .market{background:var(--panel);border:1px solid transparent;border-radius:14px;padding:18px 20px;margin-bottom:10px}
   .market-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
   .market-name{font-weight:700;font-size:17px;min-width:0}
@@ -155,6 +167,17 @@
     padding:8px 16px;border-radius:999px;border:1px solid var(--line);color:var(--muted);transition:border-color .15s,background .15s,color .15s}
   .insight-tab:hover{border-color:var(--pitch);color:var(--text)}
   .insight-tab.active{background:var(--pitch);border-color:var(--pitch);color:var(--bg)}
+  .league-tiles{display:flex;gap:8px;margin-bottom:18px;overflow-x:auto;padding-bottom:4px;
+    scrollbar-width:none;-ms-overflow-style:none}
+  .league-tiles::-webkit-scrollbar{display:none}
+  .league-tile{all:unset;box-sizing:border-box;cursor:pointer;flex-shrink:0;min-width:56px;height:48px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    background:var(--panel);border:1px solid transparent;border-radius:12px;padding:0 10px;
+    font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:var(--muted);
+    transition:background .15s,color .15s,border-color .15s}
+  .league-tile:hover{border-color:var(--pitch);color:var(--text)}
+  .league-tile.active{background:var(--pitch);border-color:var(--pitch);color:var(--bg)}
+  .league-tile .n{font-size:9px;font-weight:400;opacity:.75}
   .table-pills{display:flex;gap:8px;margin-bottom:18px;overflow-x:auto;padding-bottom:4px;
     scrollbar-width:none;-ms-overflow-style:none}
   .table-pills::-webkit-scrollbar{display:none}
@@ -206,9 +229,10 @@
 <body>
 <div class="app">
   <header>
-    <div class="brand">HIT<span>RATE</span></div>
-    <p class="tagline"><b>Transparency through the noise.</b> Plain-English football reads that show their
-      working — built on data to help you avoid uninformed bets.</p>
+    <div class="brand-row">
+      <div class="brand">HIT<span>RATE</span></div>
+    </div>
+    <p class="tagline"><b>Transparency through the noise.</b> Plain-English football reads that show their working.</p>
   </header>
 
   <section id="featured" style="display:none"></section>
@@ -216,7 +240,7 @@
   <section class="dash" id="insight"></section>
 
   <div class="picker-label" style="margin-top:8px">Upcoming fixtures</div>
-  <div class="table-pills" id="leagueFilter"></div>
+  <div class="league-tiles" id="leagueFilter"></div>
   <div class="fixtures" id="fixtures"></div>
   <div class="note" id="note">Loading fixtures…</div>
 
@@ -661,6 +685,26 @@ function combinedCard(name, infoKey, hGames, aGames, test, up, down, hName, aNam
     ${slipBtn(name, matchTag, p.rate)}
     ${gamesToggle(tables)}</div>`;
 }
+// side-by-side comparison rows — one bar per side, scaled against the larger of the
+// two so the visual gap reflects the real gap rather than always filling the width
+function comparisonCard(title, hName, aName, rows) {
+  const body = rows.map(r => {
+    const max = Math.max(r.h, r.a, 1);
+    return `<div class="cmp-row">
+      <div class="cmp-top">
+        <span class="v">${r.fmt ? r.fmt(r.h) : r.h + '%'}</span>
+        <span class="l">${r.label}</span>
+        <span class="v r">${r.fmt ? r.fmt(r.a) : r.a + '%'}</span>
+      </div>
+      <div class="cmp-bars">
+        <i style="flex:${(r.h / max).toFixed(3)};background:var(--pitch)"></i>
+        <i style="flex:${(r.a / max).toFixed(3)};background:var(--line)"></i>
+      </div>
+    </div>`;
+  }).join('');
+  return `<div class="cmp-card"><div class="cmp-title">${title}</div>${body}</div>`;
+}
+
 function compareCard(title, infoKey, hName, hGames, aName, aGames, test, lean, yesWord, noWord, note) {
   const hB = breakdown(hGames, test), aB = breakdown(aGames, test);
   const tables = gamesTable(hGames, test, hName) + gamesTable(aGames, test, aName);
@@ -777,17 +821,32 @@ async function loadFixtures() {
   } catch (e) { noteEl.textContent = `Couldn't load fixtures: ${e.message}`; }
 }
 
-// one pill per league that actually has fixtures right now, plus "All" — tapping
+// short codes for the tile selector. football-data returns its own names (e.g.
+// "Primera Division", "Campeonato Brasileiro Serie A"), so match loosely and fall
+// back to the first three letters rather than showing nothing.
+const LEAGUE_CODES = [
+  [/premier league/i, 'PL'], [/championship/i, 'CHA'], [/primera division|la liga/i, 'LAL'],
+  [/brasileir/i, 'BRA'], [/champions league/i, 'UCL'], [/serie a/i, 'SEA'],
+  [/bundesliga/i, 'BUN'], [/ligue 1/i, 'LIG'], [/eredivisie/i, 'ERE'],
+  [/primeira liga/i, 'PRI'], [/world cup/i, 'WC'],
+];
+const leagueCode = name => {
+  const hit = LEAGUE_CODES.find(([re]) => re.test(name));
+  return hit ? hit[1] : name.slice(0, 3).toUpperCase();
+};
+
+// one tile per league that actually has fixtures right now, plus "All" — tapping
 // filters the list below without needing to re-fetch anything, since we already
 // have every league's fixtures grouped client-side
 function renderLeagueFilter() {
   const el = document.getElementById('leagueFilter');
-  const pill = (label, active) => `<button class="table-pill${active ? ' active' : ''}" data-league="${label}">${label}</button>`;
-  el.innerHTML = pill('All', true) + fixtureLeagueOrder.map(l => pill(l, false)).join('');
-  el.querySelectorAll('.table-pill').forEach(btn => {
+  const tile = (label, code, active) =>
+    `<button class="league-tile${active ? ' active' : ''}" data-league="${label}" title="${label}">${code}</button>`;
+  el.innerHTML = tile('All', 'ALL', true) + fixtureLeagueOrder.map(l => tile(l, leagueCode(l), false)).join('');
+  el.querySelectorAll('.league-tile').forEach(btn => {
     btn.onclick = () => {
       activeLeagueFilter = btn.dataset.league;
-      el.querySelectorAll('.table-pill').forEach(b => b.classList.toggle('active', b === btn));
+      el.querySelectorAll('.league-tile').forEach(b => b.classList.toggle('active', b === btn));
       renderFixtureGroups(activeLeagueFilter);
     };
   });
@@ -1099,6 +1158,11 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
         <div class="section-h">Second half &amp; combined markets</div>${secondHalf.join('')}
       </div>
       <div class="insight-pane" id="match-pane-form" style="display:none">
+        ${comparisonCard(`${fx.home} v ${fx.away}`, fx.home, fx.away, [
+          { label: 'Wins in last ' + Math.min(home.length, away.length), h: breakdown(home, winTest).hits.length, a: breakdown(away, winTest).hits.length, fmt: v => v },
+          { label: 'Scored', h: hScore, a: aScore },
+          { label: 'Clean sheet', h: hClean, a: aClean },
+        ])}
         <div class="section-h">Each team</div>${angleHtml}${da.join('')}
       </div>`;
     document.getElementById('matchTabs').querySelectorAll('.insight-tab').forEach(btn => {
