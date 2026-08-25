@@ -16,68 +16,69 @@
   *{box-sizing:border-box;margin:0;padding:0}
   html{overflow-x:hidden}
   body{
-    background:repeating-linear-gradient(180deg,#2d8a4a 0 40px,#256f3c 40px 80px) fixed,var(--bg);
+    background:var(--bg);
     overflow-x:hidden;
     color:var(--text);font-family:'Archivo',system-ui,sans-serif;line-height:1.5;min-height:100vh;
   }
-  .pitch-bg{position:fixed;inset:0;z-index:-1;pointer-events:none}
   .app{max-width:880px;margin:0 auto;padding:32px 20px 80px}
-  .brand{font-family:'Montserrat',sans-serif;font-weight:800;font-size:clamp(38px,8vw,60px);letter-spacing:.5px;line-height:.95;text-transform:uppercase;text-shadow:0 1px 6px rgba(0,0,0,.5)}
-  .brand span{color:#ffffff;text-shadow:0 1px 6px rgba(0,0,0,.5)}
-  header{position:relative;padding:8px 4px 4px;margin:-8px -4px 0;
-    background:radial-gradient(ellipse 130% 110% at 50% 25%,rgba(6,16,11,.62) 0%,rgba(6,16,11,.32) 55%,transparent 85%)}
-  .tagline{color:#ffffff;font-size:15px;margin-top:10px;max-width:46ch;text-shadow:0 1px 6px rgba(0,0,0,.5)}.tagline b{color:#ffffff}
-  .picker-label,.section-h{width:fit-content;font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#ffffff;
-    background:rgba(6,16,11,.7);padding:6px 12px;border-radius:6px}
+  .brand{font-family:'Montserrat',sans-serif;font-weight:800;font-size:clamp(30px,6vw,42px);letter-spacing:.5px;line-height:.95;text-transform:uppercase}
+  .brand span{color:var(--pitch)}
+  header{margin-bottom:24px}
+  .tagline{color:var(--muted);font-size:14px;margin-top:8px;max-width:52ch;line-height:1.6}.tagline b{color:var(--text)}
+  .picker-label,.section-h{font-size:12px;text-transform:uppercase;letter-spacing:2px;color:var(--muted)}
   .fixture-group-h{width:fit-content;font-family:'Space Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;
-    color:#ffffff;background:rgba(6,16,11,.7);padding:6px 12px;border-radius:6px;margin:20px 0 10px}
+    color:var(--muted);margin:24px 0 12px}
   .fixture-group-h:first-child{margin-top:6px}
   .picker-label{margin:28px 0 10px}
   #featured{margin-top:28px}
-  .featured-card{all:unset;box-sizing:border-box;cursor:pointer;display:block;width:100%;background:var(--panel);backdrop-filter:blur(2px);
-    border:2px solid var(--pitch);border-radius:16px;padding:clamp(16px,4vw,22px);margin-bottom:24px;
-    box-shadow:0 0 0 1px rgba(45,212,191,.15),0 10px 30px rgba(0,0,0,.35);transition:transform .15s,box-shadow .15s}
-  .featured-card:hover{transform:translateY(-2px);box-shadow:0 0 0 1px rgba(45,212,191,.25),0 14px 36px rgba(0,0,0,.4)}
-  .featured-eyebrow{font-family:'Space Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:2px;
-    color:var(--pitch);margin-bottom:12px}
-  .featured-teams{font-weight:700;font-size:clamp(17px,5.5vw,21px);color:var(--text);line-height:1.3;
-    font-family:'Montserrat',sans-serif;text-transform:uppercase;letter-spacing:.3px;word-break:break-word}
-  .featured-teams .crest{width:clamp(20px,6vw,28px);height:clamp(20px,6vw,28px);object-fit:contain;vertical-align:-6px;margin-right:6px}
-  .featured-teams .vs{color:var(--muted);font-weight:400;font-size:.75em;margin:0 6px;text-transform:none}
-  .featured-time{font-family:'Space Mono',monospace;font-size:12px;color:var(--muted);margin:6px 0 18px}
-  .featured-stats{display:flex;gap:clamp(8px,2.5vw,12px);margin-bottom:16px}
-  .featured-stat{flex:1;min-width:0;background:var(--panel-2);border-radius:10px;padding:clamp(9px,2.5vw,14px)}
-  .featured-stat .nm{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .featured-stat .pct{font-family:'Space Mono',monospace;font-weight:700;font-size:clamp(22px,7vw,30px);color:var(--pitch)}
-  .featured-lean{font-size:14px;line-height:1.55;color:var(--text);margin-bottom:14px}
-  .featured-lean b{color:var(--pitch)}
-  .featured-cta{font-family:'Space Mono',monospace;font-size:12.5px;color:var(--pitch);font-weight:700}
+  .featured-card{all:unset;box-sizing:border-box;cursor:pointer;display:block;width:100%;background:var(--panel);
+    border:1px solid var(--pitch);border-radius:16px;padding:clamp(18px,4vw,24px);margin-bottom:28px;
+    transition:border-color .15s,transform .15s}
+  .featured-card:hover{transform:translateY(-2px);border-color:#5fe6d4}
+  .featured-eyebrow{font-family:'Space Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:2px;
+    color:var(--pitch);margin-bottom:18px}
+  .fx-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:20px}
+  .fx-side{flex:1;min-width:0;text-align:center}
+  .fx-side .crest{width:clamp(30px,9vw,40px);height:clamp(30px,9vw,40px);object-fit:contain;display:block;margin:0 auto 8px}
+  .fx-side .nm{font-weight:600;font-size:clamp(13px,3.6vw,15px);color:var(--text);line-height:1.3;word-break:break-word}
+  .fx-when{flex-shrink:0;text-align:center;padding-top:6px}
+  .fx-when .d{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted)}
+  .fx-when .t{font-family:'Space Mono',monospace;font-size:14px;color:var(--text);margin-top:2px}
+  .fx-split{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .fx-split .pct{font-family:'Space Mono',monospace;font-weight:700;font-size:clamp(16px,4.6vw,19px);min-width:44px}
+  .fx-split .pct.a{color:var(--pitch)}
+  .fx-split .pct.b{color:var(--muted);text-align:right}
+  .fx-bar{flex:1;min-width:0;height:6px;border-radius:999px;overflow:hidden;display:flex;background:var(--bg)}
+  .fx-bar i{display:block;height:100%}
+  .featured-lean{font-size:13.5px;line-height:1.6;color:var(--muted);margin-bottom:16px}
+  .featured-lean b{color:var(--text);font-weight:600}
+  .featured-cta{font-family:'Space Mono',monospace;font-size:12px;color:var(--pitch);font-weight:700}
   .section-h{margin:26px 0 12px;display:flex;align-items:center;gap:12px}
   .section-h::after{content:"";flex:1;height:1px;background:var(--line)}
-  .fixtures{display:grid;gap:10px}
+  .fixtures{display:grid;gap:8px}
   .fixture-btn{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:14px;
-    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 18px;
-    backdrop-filter:blur(2px);transition:border-color .15s,transform .15s,background .15s}
+    background:var(--panel);border:1px solid transparent;border-radius:14px;padding:15px 18px;
+    transition:border-color .15s,transform .15s,background .15s}
   .fixture-btn:hover{border-color:var(--pitch);transform:translateY(-1px);background:var(--panel-2)}
   .fixture-btn.active{border-color:var(--pitch);background:var(--panel-2)}
-  .fixture-teams{font-weight:600;font-size:16px;min-width:0}
+  .fixture-teams{font-weight:500;font-size:15px;min-width:0}
   .fixture-teams .vs{color:var(--muted);font-weight:400;margin:0 8px}
   .crest{width:18px;height:18px;object-fit:contain;vertical-align:-3px;margin-right:7px}
   .fixture-right{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
   .fixture-time{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);white-space:nowrap}
   .fixture-league{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);
     border:1px solid var(--line);border-radius:999px;padding:3px 10px;white-space:nowrap}
-  .note{width:fit-content;color:#ffffff;background:rgba(6,16,11,.7);font-size:13px;padding:10px 14px;border-radius:8px;margin:14px 0}
+  .note{color:var(--muted);font-size:13px;margin:14px 0}
   .results{margin-top:36px}.results.hidden{display:none}
   .matchup{width:fit-content;font-family:'Montserrat',sans-serif;font-weight:700;text-transform:uppercase;
     font-size:clamp(20px,4.5vw,30px);letter-spacing:.5px;margin-bottom:6px;color:#ffffff;
-    background:rgba(6,16,11,.7);padding:10px 16px;border-radius:12px}
+    }
   .kickoff{width:fit-content;font-family:'Space Mono',monospace;font-size:13px;color:#ffffff;
-    background:rgba(6,16,11,.7);padding:6px 12px;border-radius:6px;margin-bottom:12px}
+    margin-bottom:14px}
   .matchup .at{color:#ffffff}
-  .disclaimer{width:fit-content;font-size:13px;color:#ffffff;background:rgba(6,16,11,.7);
-    border-left:2px solid rgba(255,255,255,.35);padding:10px 14px;border-radius:8px;margin:14px 0 4px}
-  .market{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-bottom:14px;backdrop-filter:blur(2px)}
+  .disclaimer{font-size:13px;color:var(--muted);border-left:2px solid var(--line);
+    padding-left:14px;margin:16px 0 4px;line-height:1.6}
+  .market{background:var(--panel);border:1px solid transparent;border-radius:14px;padding:18px 20px;margin-bottom:10px}
   .market-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
   .market-name{font-weight:700;font-size:17px;min-width:0}
   .market-stat{font-family:'Space Mono',monospace;font-size:26px;font-weight:700}
@@ -135,14 +136,14 @@
     opacity:0;visibility:hidden;transition:opacity .15s;z-index:5;pointer-events:none}
   .info:hover::after,.info:focus::after{opacity:1;visibility:visible}
   .form-row{display:flex;gap:18px;flex-wrap:wrap;margin:18px 0 4px}
-  .form-team{font-size:13px}.form-team .label{color:#ffffff;background:rgba(6,16,11,.7);padding:4px 8px;border-radius:5px;margin-right:8px}
+  .form-team{font-size:13px}.form-team .label{color:var(--muted);margin-right:8px}
   .badge{font-family:'Space Mono',monospace;font-weight:700;font-size:12px;display:inline-grid;place-items:center;
     width:22px;height:22px;border-radius:5px;margin-right:3px}
   .badge.W{background:#123023;border:1px solid var(--good);color:var(--good)}
   .badge.D{background:#123023;border:1px solid var(--meh);color:var(--meh)}
   .badge.L{background:#123023;border:1px solid var(--bad);color:var(--bad)}
   /* ---- league dashboard ---- */
-  .dash{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-top:8px;backdrop-filter:blur(2px)}
+  .dash{background:var(--panel);border:1px solid transparent;border-radius:16px;padding:20px;margin-top:8px}
   .dash h3{font-family:'Montserrat',sans-serif;font-weight:700;text-transform:uppercase;font-size:17px;letter-spacing:.5px;margin-bottom:2px}
   .dash .sub{font-size:12px;color:var(--muted);margin-bottom:14px}
   .dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
@@ -154,9 +155,11 @@
     padding:8px 16px;border-radius:999px;border:1px solid var(--line);color:var(--muted);transition:border-color .15s,background .15s,color .15s}
   .insight-tab:hover{border-color:var(--pitch);color:var(--text)}
   .insight-tab.active{background:var(--pitch);border-color:var(--pitch);color:var(--bg)}
-  .table-pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
-  .table-pill{all:unset;box-sizing:border-box;cursor:pointer;font-family:'Space Mono',monospace;font-size:12px;color:#ffffff;
-    background:rgba(6,16,11,.75);border:1px solid var(--line);border-radius:999px;padding:6px 14px;transition:border-color .15s,color .15s,background .15s}
+  .table-pills{display:flex;gap:8px;margin-bottom:18px;overflow-x:auto;padding-bottom:4px;
+    scrollbar-width:none;-ms-overflow-style:none}
+  .table-pills::-webkit-scrollbar{display:none}
+  .table-pill{all:unset;box-sizing:border-box;cursor:pointer;flex-shrink:0;font-family:'Space Mono',monospace;font-size:12px;color:var(--muted);
+    background:var(--panel);border:1px solid transparent;border-radius:999px;padding:8px 16px;transition:border-color .15s,color .15s,background .15s}
   .table-pill:hover{border-color:var(--pitch);color:var(--text)}
   .table-pill.active{background:var(--pitch);border-color:var(--pitch);color:var(--bg)}
   .table-group-name{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--pitch);margin:14px 0 8px}
@@ -182,7 +185,7 @@
   .slip-add:hover{border-color:var(--pitch)}
   .slip-add.on{background:rgba(45,212,191,.12);border-color:var(--pitch);color:var(--pitch)}
   #slip{position:fixed;right:18px;bottom:18px;width:330px;max-width:calc(100vw - 36px);background:var(--panel);
-    backdrop-filter:blur(2px);border:1px solid var(--pitch);border-radius:var(--radius);padding:16px 18px;box-shadow:0 14px 40px rgba(0,0,0,.3);
+    border:1px solid var(--pitch);border-radius:var(--radius);padding:16px 18px;box-shadow:0 14px 40px rgba(0,0,0,.3);
     z-index:20;display:none}
   #slip .slip-head{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:15px;margin-bottom:10px}
   #slip .slip-head button{all:unset;box-sizing:border-box;cursor:pointer;font-size:12px;color:var(--muted);font-family:'Space Mono',monospace}
@@ -196,23 +199,11 @@
   .slip-bar>div{height:100%;border-radius:999px;transition:width .4s}
   .slip-combined{font-family:'Space Mono',monospace;font-weight:700;font-size:18px}
   .slip-note{font-size:12px;color:var(--muted);line-height:1.5}
-  footer{width:fit-content;margin-top:40px;font-size:12px;color:#ffffff;background:rgba(6,16,11,.7);
-    padding:12px 16px;border-radius:10px}footer b{color:#ffffff}
+  footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);font-size:12px;
+    color:var(--muted);line-height:1.6}footer b{color:var(--text)}
 </style>
 </head>
 <body>
-<svg class="pitch-bg" viewBox="0 0 400 620" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-  <rect x="20" y="20" width="360" height="580" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5"/>
-  <line x1="20" y1="310" x2="380" y2="310" stroke="rgba(255,255,255,.5)" stroke-width="2.5"/>
-  <circle cx="200" cy="310" r="55" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5"/>
-  <circle cx="200" cy="310" r="3" fill="rgba(255,255,255,.6)"/>
-  <rect x="110" y="20" width="180" height="90" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5"/>
-  <rect x="155" y="20" width="90" height="35" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5"/>
-  <path d="M 155 110 A 55 55 0 0 0 245 110" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5"/>
-  <rect x="110" y="510" width="180" height="90" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5"/>
-  <rect x="155" y="565" width="90" height="35" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5"/>
-  <path d="M 155 510 A 55 55 0 0 1 245 510" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5"/>
-</svg>
 <div class="app">
   <header>
     <div class="brand">HIT<span>RATE</span></div>
@@ -247,6 +238,15 @@ const WINDOW = 6;                 // one sample size, used everywhere
 const pct = (n, t) => t ? Math.round((n / t) * 100) : 0;
 
 // UK kick-off time — Europe/London handles BST/GMT automatically, no manual offset needed
+// day and time as separate pieces, for the stacked hero layout
+function ukTimeParts(iso) {
+  if (!iso) return { day: '', time: '' };
+  const d = new Date(iso);
+  return {
+    day: d.toLocaleDateString('en-GB', { timeZone: 'Europe/London', weekday: 'short', day: 'numeric', month: 'short' }),
+    time: d.toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', hour12: false }),
+  };
+}
 function ukTimeShort(iso) {
   if (!iso) return '';
   const d = new Date(iso);
@@ -699,13 +699,23 @@ async function fetchJson(url, tries = 2) {
 
 // the soonest upcoming fixture, shown big at the top with its actual read —
 // not a teaser, the real lean, front and centre, one tap from the odds tool
+function featuredHead(fx) {
+  const t = ukTimeParts(fx.date);
+  const side = (name, crest) => `<div class="fx-side">
+    ${crest ? `<img class="crest" src="${crest}" alt="" loading="lazy" onerror="this.remove()">` : ''}
+    <div class="nm">${name}</div></div>`;
+  return `<div class="fx-head">
+    ${side(fx.home, fx.crest)}
+    <div class="fx-when"><div class="d">${t.day}</div><div class="t">${t.time}</div></div>
+    ${side(fx.away, fx.awayCrest)}
+  </div>`;
+}
+
 async function loadFeatured(fx) {
   const el = document.getElementById('featured');
   el.innerHTML = `<div class="featured-card" style="cursor:default">
-    <div class="featured-eyebrow">Next up</div>
-    <div class="featured-teams">${fx.crest ? `<img class="crest" src="${fx.crest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${fx.home}
-      <span class="vs">v</span>${fx.awayCrest ? `<img class="crest" src="${fx.awayCrest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${fx.away}</div>
-    <div class="featured-time">${ukTimeShort(fx.date)} · ${fx.league}</div>
+    <div class="featured-eyebrow">Next up · ${fx.league}</div>
+    ${featuredHead(fx)}
     <div class="featured-lean">Crunching the read…</div></div>`;
   el.style.display = 'block';
   try {
@@ -726,13 +736,12 @@ async function loadFeatured(fx) {
     const card = document.createElement('button');
     card.className = 'featured-card';
     card.innerHTML = `
-      <div class="featured-eyebrow">Next up</div>
-      <div class="featured-teams">${fx.crest ? `<img class="crest" src="${fx.crest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${fx.home}
-        <span class="vs">v</span>${fx.awayCrest ? `<img class="crest" src="${fx.awayCrest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${fx.away}</div>
-      <div class="featured-time">${ukTimeShort(fx.date)} · ${fx.league}</div>
-      <div class="featured-stats">
-        <div class="featured-stat"><span class="nm">${fx.home}</span><span class="pct">${hWin.rate}%</span></div>
-        <div class="featured-stat"><span class="nm">${fx.away}</span><span class="pct">${aWin.rate}%</span></div>
+      <div class="featured-eyebrow">Next up · ${fx.league}</div>
+      ${featuredHead(fx)}
+      <div class="fx-split">
+        <span class="pct a">${hWin.rate}%</span>
+        <span class="fx-bar"><i style="width:${hWin.rate}%;background:var(--pitch)"></i><i style="width:${aWin.rate}%;background:var(--line)"></i></span>
+        <span class="pct b">${aWin.rate}%</span>
       </div>
       <div class="featured-lean">${wLean}</div>
       <div class="featured-cta">See the full breakdown &amp; odds \u2192</div>`;
