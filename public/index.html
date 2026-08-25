@@ -246,16 +246,16 @@
 
   <div class="view" id="view-home">
     <section id="featured" style="display:none"></section>
-    <div class="picker-label">Best angles</div>
-    <section class="dash" id="insight"></section>
-  </div>
-
-  <div class="view" id="view-fixtures" style="display:none">
-    <div class="picker-label" style="margin-top:8px">Upcoming fixtures</div>
+    <div class="picker-label">Upcoming fixtures</div>
     <div class="league-tiles" id="leagueFilter"></div>
     <div class="fixtures" id="fixtures"></div>
     <div class="note" id="note">Loading fixtures…</div>
     <section class="results hidden" id="results"></section>
+  </div>
+
+  <div class="view" id="view-angles" style="display:none">
+    <div class="picker-label">Best angles</div>
+    <section class="dash" id="insight"></section>
   </div>
 
   <div class="view" id="view-tables" style="display:none">
@@ -276,7 +276,7 @@
 
 <nav id="bottomNav" aria-label="Main">
   <button class="nav-item active" data-nav="home"><i class="nav-ico">⌂</i><span>Home</span></button>
-  <button class="nav-item" data-nav="fixtures"><i class="nav-ico">▦</i><span>Fixtures</span></button>
+  <button class="nav-item" data-nav="angles"><i class="nav-ico">▦</i><span>Angles</span></button>
   <button class="nav-item" data-nav="tables"><i class="nav-ico">≡</i><span>Tables</span></button>
   <button class="nav-item" data-nav="record"><i class="nav-ico">◈</i><span>Record</span></button>
 </nav>
@@ -819,13 +819,11 @@ async function loadFeatured(fx) {
       <div class="featured-lean">${shortLean}</div>
       <div class="featured-cta">See the full breakdown &amp; odds \u2192</div>`;
     card.onclick = () => {
-      // the match view lives in the Fixtures tab, so go there first
-      showView('fixtures');
       document.querySelectorAll('.fixture-btn').forEach(b => b.classList.remove('active'));
       const match = [...document.querySelectorAll('.fixture-btn')].find(b => b.innerHTML.includes(fx.home) && b.innerHTML.includes(fx.away));
       if (match) match.classList.add('active');
       showFixture(fx);
-      setTimeout(() => document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+      document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
     el.innerHTML = '';
     el.appendChild(card);
@@ -1215,7 +1213,7 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
 
 // four genuine views — only one is on screen at a time, swapped by the bottom nav.
 // Everything is already loaded client-side, so switching costs nothing.
-const VIEWS = ['home', 'fixtures', 'tables', 'record'];
+const VIEWS = ['home', 'angles', 'tables', 'record'];
 function showView(name) {
   VIEWS.forEach(v => {
     const el = document.getElementById('view-' + v);
