@@ -30,7 +30,7 @@
   .fixture-group-h{width:fit-content;font-family:'Space Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;
     color:var(--muted);margin:24px 0 12px}
   .fixture-group-h:first-child{margin-top:6px}
-  .picker-label{margin:28px 0 10px}
+  .picker-label{margin:34px 0 12px}
   #featured{margin-top:28px}
   .featured-card{all:unset;box-sizing:border-box;cursor:pointer;display:block;width:100%;background:var(--panel);
     border:1px solid var(--pitch);border-radius:16px;padding:clamp(18px,4vw,24px);margin-bottom:28px;
@@ -246,6 +246,7 @@
 
   <section id="featured" style="display:none"></section>
 
+  <div class="picker-label">Best angles</div>
   <section class="dash" id="insight"></section>
 
   <div class="picker-label" id="fixturesTop" style="margin-top:8px">Upcoming fixtures</div>
@@ -254,6 +255,12 @@
   <div class="note" id="note">Loading fixtures…</div>
 
   <section class="results hidden" id="results"></section>
+
+  <div class="picker-label" id="tablesTop">League tables</div>
+  <section class="dash" id="tablesSection"></section>
+
+  <div class="picker-label" id="recordTop">Track record</div>
+  <section class="dash" id="recordSection"></section>
 
   <footer>
     Reads are based on <b>the last 6 games</b> only — descriptive, not a prediction model.
@@ -555,25 +562,18 @@ let activeTableCid = null;
 
 // one panel, three tabs — replaces having League tables, Best angles, and Track
 // record as three separate boxes scattered around the page
+// Best angles, League tables and Track record are three separate sections now,
+// each with its own heading — the bottom nav jumps straight to the relevant one
 function initInsightPanel() {
-  const el = document.getElementById('insight');
-  el.innerHTML = `
-    <div class="insight-tabs">
-      <button class="insight-tab active" data-tab="angles">Best angles</button>
-      <button class="insight-tab" data-tab="track">Track record</button>
-      <button class="insight-tab" data-tab="tables">League tables</button>
-    </div>
-    <div class="insight-pane" id="pane-angles"><div class="sub">Loading…</div></div>
-    <div class="insight-pane" id="pane-track" style="display:none"><div class="sub">Loading…</div></div>
-    <div class="insight-pane" id="pane-tables" style="display:none"></div>`;
-  el.querySelectorAll('.insight-tab').forEach(btn => { btn.onclick = () => showInsightTab(btn.dataset.tab); });
+  document.getElementById('insight').innerHTML =
+    `<div class="insight-pane" id="pane-angles"><div class="sub">Loading…</div></div>`;
+  document.getElementById('tablesSection').innerHTML =
+    `<div class="insight-pane" id="pane-tables"></div>`;
+  document.getElementById('recordSection').innerHTML =
+    `<div class="insight-pane" id="pane-track"><div class="sub">Loading…</div></div>`;
   renderTablePills(); // pills render instantly, no fetch needed
 }
 
-function showInsightTab(tab) {
-  document.querySelectorAll('.insight-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  document.querySelectorAll('.insight-pane').forEach(p => { p.style.display = (p.id === 'pane-' + tab) ? 'block' : 'none'; });
-}
 
 function renderTablePills() {
   const el = document.getElementById('pane-tables');
@@ -798,7 +798,7 @@ async function loadFeatured(fx) {
     const homePos = pos.positions[fx.homeId] ?? byName[fx.home];
     const awayPos = pos.positions[fx.awayId] ?? byName[fx.away];
     const positions = (pos.total >= 10 && homePos && awayPos) ? { homePos, awayPos, total: pos.total } : null;
-    const { hWin, aWin, wLean } = computeWhoWins(fx, home, away, positions, h2h);
+    const { hWin, aWin, shortLean } = computeWhoWins(fx, home, away, positions, h2h);
 
     const card = document.createElement('button');
     card.className = 'featured-card';
@@ -810,7 +810,7 @@ async function loadFeatured(fx) {
         <span class="fx-bar"><i style="width:${hWin.rate}%;background:var(--pitch)"></i><i style="width:${aWin.rate}%;background:var(--line)"></i></span>
         <span class="pct b">${aWin.rate}%</span>
       </div>
-      <div class="featured-lean">${wLean}</div>
+      <div class="featured-lean">${shortLean}</div>
       <div class="featured-cta">See the full breakdown &amp; odds \u2192</div>`;
     card.onclick = () => {
       document.querySelectorAll('.fixture-btn').forEach(b => b.classList.remove('active'));
@@ -1008,18 +1008,23 @@ function computeWhoWins(fx, home, away, positions, h2h) {
   const signalsText = signals.length > 1
     ? signals.slice(0, -1).join(', ') + ' and ' + signals[signals.length - 1]
     : signals[0];
-  let wLean;
+  let wLean, shortLean;
   if (positions && Math.sign(formEdge) !== Math.sign(posEdge) && Math.abs(formEdge) >= 20 && Math.abs(posEdge) >= 40) {
     const formFav = formEdge > 0 ? fx.home : fx.away;
     const tableFav = posEdge > 0 ? fx.home : fx.away;
     wLean = `Genuinely hard to call — recent form favours <b>${formFav}</b>, but the table favours <b>${tableFav}</b>.${posBit} A hot streak running into a stronger side on paper.`;
-  } else if (edge >= 20)
+    shortLean = 'Genuinely hard to call';
+  } else if (edge >= 20) {
     wLean = `The lean is towards a <b>home win</b> — ${fx.home} come out ahead on ${signalsText}.${posBit}`;
-  else if (edge <= -20)
+    shortLean = `Leaning <b>${fx.home}</b>`;
+  } else if (edge <= -20) {
     wLean = `The lean is towards an <b>away win</b> — ${fx.away} come out ahead on ${signalsText}.${posBit}`;
-  else
+    shortLean = `Leaning <b>${fx.away}</b>`;
+  } else {
     wLean = `Too close to call — the two are well matched on ${signalsText}, so a draw or either win all look live.${posBit}`;
-  return { winTest, hWin, aWin, edge, wLean };
+    shortLean = 'Too close to call';
+  }
+  return { winTest, hWin, aWin, edge, wLean, shortLean };
 }
 
 // draws everything from two teams' last-WINDOW result arrays
@@ -1212,8 +1217,8 @@ function initBottomNav() {
       const target = btn.dataset.nav;
       if (target === 'home') window.scrollTo({ top: 0, behavior: 'smooth' });
       else if (target === 'fixtures') goTo(document.getElementById('fixturesTop'));
-      else if (target === 'tables') { showInsightTab('tables'); goTo(document.getElementById('insight')); }
-      else if (target === 'record') { showInsightTab('track'); goTo(document.getElementById('insight')); }
+      else if (target === 'tables') goTo(document.getElementById('tablesTop'));
+      else if (target === 'record') goTo(document.getElementById('recordTop'));
     };
   });
 }
