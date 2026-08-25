@@ -244,23 +244,29 @@
     <p class="tagline"><b>Transparency through the noise.</b> Plain-English football reads that show their working.</p>
   </header>
 
-  <section id="featured" style="display:none"></section>
+  <div class="view" id="view-home">
+    <section id="featured" style="display:none"></section>
+    <div class="picker-label">Best angles</div>
+    <section class="dash" id="insight"></section>
+  </div>
 
-  <div class="picker-label">Best angles</div>
-  <section class="dash" id="insight"></section>
+  <div class="view" id="view-fixtures" style="display:none">
+    <div class="picker-label" style="margin-top:8px">Upcoming fixtures</div>
+    <div class="league-tiles" id="leagueFilter"></div>
+    <div class="fixtures" id="fixtures"></div>
+    <div class="note" id="note">Loading fixtures…</div>
+    <section class="results hidden" id="results"></section>
+  </div>
 
-  <div class="picker-label" id="fixturesTop" style="margin-top:8px">Upcoming fixtures</div>
-  <div class="league-tiles" id="leagueFilter"></div>
-  <div class="fixtures" id="fixtures"></div>
-  <div class="note" id="note">Loading fixtures…</div>
+  <div class="view" id="view-tables" style="display:none">
+    <div class="picker-label">League tables</div>
+    <section class="dash" id="tablesSection"></section>
+  </div>
 
-  <section class="results hidden" id="results"></section>
-
-  <div class="picker-label" id="tablesTop">League tables</div>
-  <section class="dash" id="tablesSection"></section>
-
-  <div class="picker-label" id="recordTop">Track record</div>
-  <section class="dash" id="recordSection"></section>
+  <div class="view" id="view-record" style="display:none">
+    <div class="picker-label">Track record</div>
+    <section class="dash" id="recordSection"></section>
+  </div>
 
   <footer>
     Reads are based on <b>the last 6 games</b> only — descriptive, not a prediction model.
@@ -813,11 +819,13 @@ async function loadFeatured(fx) {
       <div class="featured-lean">${shortLean}</div>
       <div class="featured-cta">See the full breakdown &amp; odds \u2192</div>`;
     card.onclick = () => {
+      // the match view lives in the Fixtures tab, so go there first
+      showView('fixtures');
       document.querySelectorAll('.fixture-btn').forEach(b => b.classList.remove('active'));
       const match = [...document.querySelectorAll('.fixture-btn')].find(b => b.innerHTML.includes(fx.home) && b.innerHTML.includes(fx.away));
       if (match) match.classList.add('active');
       showFixture(fx);
-      document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setTimeout(() => document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
     };
     el.innerHTML = '';
     el.appendChild(card);
@@ -1205,22 +1213,21 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
     syncSlipButtons();
 }
 
-// bottom nav — HitRate is a single page, so these move you to the right part of it
-// (and switch the insight panel's tab where that's what the label means) rather
-// than pretending to be separate screens
-function initBottomNav() {
-  const nav = document.getElementById('bottomNav');
-  const goTo = (el) => { if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
-  nav.querySelectorAll('.nav-item').forEach(btn => {
-    btn.onclick = () => {
-      nav.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b === btn));
-      const target = btn.dataset.nav;
-      if (target === 'home') window.scrollTo({ top: 0, behavior: 'smooth' });
-      else if (target === 'fixtures') goTo(document.getElementById('fixturesTop'));
-      else if (target === 'tables') goTo(document.getElementById('tablesTop'));
-      else if (target === 'record') goTo(document.getElementById('recordTop'));
-    };
+// four genuine views — only one is on screen at a time, swapped by the bottom nav.
+// Everything is already loaded client-side, so switching costs nothing.
+const VIEWS = ['home', 'fixtures', 'tables', 'record'];
+function showView(name) {
+  VIEWS.forEach(v => {
+    const el = document.getElementById('view-' + v);
+    if (el) el.style.display = (v === name) ? 'block' : 'none';
   });
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.nav === name));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function initBottomNav() {
+  document.getElementById('bottomNav').querySelectorAll('.nav-item')
+    .forEach(btn => { btn.onclick = () => showView(btn.dataset.nav); });
 }
 
 loadFixtures();
