@@ -20,7 +20,7 @@
     overflow-x:hidden;
     color:var(--text);font-family:'Archivo',system-ui,sans-serif;line-height:1.5;min-height:100vh;
   }
-  .app{max-width:880px;margin:0 auto;padding:32px 20px 80px}
+  .app{max-width:880px;margin:0 auto;padding:32px 20px calc(96px + env(safe-area-inset-bottom))}
   .brand{font-family:'Montserrat',sans-serif;font-weight:800;font-size:clamp(21px,5vw,26px);letter-spacing:.5px;line-height:1;text-transform:uppercase}
   .brand span{color:var(--pitch)}
   header{margin-bottom:22px}
@@ -82,6 +82,8 @@
     padding-left:14px;margin:16px 0 4px;line-height:1.6}
   .cmp-card{background:var(--panel);border-radius:14px;padding:18px 20px;margin-bottom:10px}
   .cmp-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:16px}
+  .cmp-games-h{font-family:'Space Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1px;
+    color:var(--pitch);margin:16px 0 8px}
   .cmp-row{margin-bottom:14px}
   .cmp-row:last-child{margin-bottom:0}
   .cmp-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}
@@ -207,7 +209,7 @@
     color:var(--text);border:1px solid var(--line);border-radius:7px;padding:6px 11px;transition:border-color .15s,background .15s}
   .slip-add:hover{border-color:var(--pitch)}
   .slip-add.on{background:rgba(45,212,191,.12);border-color:var(--pitch);color:var(--pitch)}
-  #slip{position:fixed;right:18px;bottom:18px;width:330px;max-width:calc(100vw - 36px);background:var(--panel);
+  #slip{position:fixed;right:18px;bottom:calc(78px + env(safe-area-inset-bottom));width:330px;max-width:calc(100vw - 36px);background:var(--panel);
     border:1px solid var(--pitch);border-radius:var(--radius);padding:16px 18px;box-shadow:0 14px 40px rgba(0,0,0,.3);
     z-index:20;display:none}
   #slip .slip-head{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:15px;margin-bottom:10px}
@@ -222,6 +224,13 @@
   .slip-bar>div{height:100%;border-radius:999px;transition:width .4s}
   .slip-combined{font-family:'Space Mono',monospace;font-weight:700;font-size:18px}
   .slip-note{font-size:12px;color:var(--muted);line-height:1.5}
+  #bottomNav{position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;justify-content:space-around;
+    background:var(--panel);border-top:1px solid var(--line);padding:9px 4px calc(9px + env(safe-area-inset-bottom))}
+  .nav-item{all:unset;box-sizing:border-box;cursor:pointer;flex:1;min-width:0;display:flex;flex-direction:column;
+    align-items:center;gap:3px;padding:4px 2px;color:var(--muted);transition:color .15s}
+  .nav-item .nav-ico{font-style:normal;font-size:17px;line-height:1}
+  .nav-item span{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase}
+  .nav-item.active{color:var(--pitch)}
   footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);font-size:12px;
     color:var(--muted);line-height:1.6}footer b{color:var(--text)}
 </style>
@@ -239,7 +248,7 @@
 
   <section class="dash" id="insight"></section>
 
-  <div class="picker-label" style="margin-top:8px">Upcoming fixtures</div>
+  <div class="picker-label" id="fixturesTop" style="margin-top:8px">Upcoming fixtures</div>
   <div class="league-tiles" id="leagueFilter"></div>
   <div class="fixtures" id="fixtures"></div>
   <div class="note" id="note">Loading fixtures…</div>
@@ -251,6 +260,13 @@
     The odds tools teach how to compare; they don't promise winners. 18+ · Gamble responsibly · BeGambleAware.org
   </footer>
 </div>
+
+<nav id="bottomNav" aria-label="Main">
+  <button class="nav-item active" data-nav="home"><i class="nav-ico">⌂</i><span>Home</span></button>
+  <button class="nav-item" data-nav="fixtures"><i class="nav-ico">▦</i><span>Fixtures</span></button>
+  <button class="nav-item" data-nav="tables"><i class="nav-ico">≡</i><span>Tables</span></button>
+  <button class="nav-item" data-nav="record"><i class="nav-ico">◈</i><span>Record</span></button>
+</nav>
 
 <div id="slip"></div>
 
@@ -687,7 +703,7 @@ function combinedCard(name, infoKey, hGames, aGames, test, up, down, hName, aNam
 }
 // side-by-side comparison rows — one bar per side, scaled against the larger of the
 // two so the visual gap reflects the real gap rather than always filling the width
-function comparisonCard(title, hName, aName, rows) {
+function comparisonCard(title, hName, aName, rows, hGames, aGames) {
   const body = rows.map(r => {
     const max = Math.max(r.h, r.a, 1);
     return `<div class="cmp-row">
@@ -702,7 +718,14 @@ function comparisonCard(title, hName, aName, rows) {
       </div>
     </div>`;
   }).join('');
-  return `<div class="cmp-card"><div class="cmp-title">${title}</div>${body}</div>`;
+  // same "show your working" treatment as every other card — each metric lists the
+  // actual games behind it, for both sides, using the shared table helper
+  const tables = rows.filter(r => r.test).map(r => `
+    <div class="cmp-games-h">${r.label}</div>
+    ${gamesTable(hGames, r.test, hName)}
+    ${gamesTable(aGames, r.test, aName)}`).join('');
+  return `<div class="cmp-card"><div class="cmp-title">${title}</div>${body}
+    ${tables ? gamesToggle(tables) : ''}</div>`;
 }
 
 function compareCard(title, infoKey, hName, hGames, aName, aGames, test, lean, yesWord, noWord, note) {
@@ -1159,10 +1182,10 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
       </div>
       <div class="insight-pane" id="match-pane-form" style="display:none">
         ${comparisonCard(`${fx.home} v ${fx.away}`, fx.home, fx.away, [
-          { label: 'Wins in last ' + Math.min(home.length, away.length), h: breakdown(home, winTest).hits.length, a: breakdown(away, winTest).hits.length, fmt: v => v },
-          { label: 'Scored', h: hScore, a: aScore },
-          { label: 'Clean sheet', h: hClean, a: aClean },
-        ])}
+          { label: 'Wins in last ' + Math.min(home.length, away.length), h: breakdown(home, winTest).hits.length, a: breakdown(away, winTest).hits.length, fmt: v => v, test: winTest },
+          { label: 'Scored', h: hScore, a: aScore, test: scoreTest },
+          { label: 'Clean sheet', h: hClean, a: aClean, test: cleanTest },
+        ], home, away)}
         <div class="section-h">Each team</div>${angleHtml}${da.join('')}
       </div>`;
     document.getElementById('matchTabs').querySelectorAll('.insight-tab').forEach(btn => {
@@ -1177,8 +1200,27 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
     syncSlipButtons();
 }
 
+// bottom nav — HitRate is a single page, so these move you to the right part of it
+// (and switch the insight panel's tab where that's what the label means) rather
+// than pretending to be separate screens
+function initBottomNav() {
+  const nav = document.getElementById('bottomNav');
+  const goTo = (el) => { if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+  nav.querySelectorAll('.nav-item').forEach(btn => {
+    btn.onclick = () => {
+      nav.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b === btn));
+      const target = btn.dataset.nav;
+      if (target === 'home') window.scrollTo({ top: 0, behavior: 'smooth' });
+      else if (target === 'fixtures') goTo(document.getElementById('fixturesTop'));
+      else if (target === 'tables') { showInsightTab('tables'); goTo(document.getElementById('insight')); }
+      else if (target === 'record') { showInsightTab('track'); goTo(document.getElementById('insight')); }
+    };
+  });
+}
+
 loadFixtures();
 initInsightPanel();
+initBottomNav();
 setTimeout(loadInsights, 1500); // stagger: fixtures first, then the shared insights call
 </script>
 </body>
