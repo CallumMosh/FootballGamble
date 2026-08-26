@@ -224,6 +224,29 @@
   .slip-bar>div{height:100%;border-radius:999px;transition:width .4s}
   .slip-combined{font-family:'Space Mono',monospace;font-weight:700;font-size:18px}
   .slip-note{font-size:12px;color:var(--muted);line-height:1.5}
+  .plan-card{background:var(--panel-2);border-radius:14px;padding:16px 18px;margin-top:14px;max-width:460px}
+  .plan-head,.plan-row{display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:8px;align-items:center;padding:9px 0}
+  .plan-head{border-bottom:1px solid var(--line);margin-bottom:4px}
+  .plan-row{border-bottom:1px solid var(--line)}
+  .plan-row:last-of-type{border-bottom:none}
+  .plan-label{font-size:12.5px;color:var(--muted)}
+  .plan-col{font-family:'Space Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
+  .plan-col.pro{color:var(--pitch)}
+  .plan-val{font-size:12.5px;color:var(--text);text-align:left}
+  .plan-val.pro{color:var(--pitch);font-weight:600}
+  .plan-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;flex-wrap:wrap}
+  .plan-actions .btn-ghost[disabled]{opacity:.55;cursor:not-allowed}
+  .badges-row{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+  .badge-tag{font-size:12.5px;padding:7px 12px;border-radius:10px;background:var(--panel-2);
+    border:1px solid var(--line);color:var(--muted)}
+  .badge-tag b{color:var(--text)}
+  .badge-tag.good{border-color:var(--good)}
+  .badge-tag.bad{border-color:var(--bad)}
+  .auth-toggle{display:flex;gap:8px;margin-top:16px}
+  .auth-toggle button{all:unset;box-sizing:border-box;cursor:pointer;font-family:'Space Mono',monospace;font-size:12px;
+    color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:7px 16px}
+  .auth-toggle button.active{background:var(--pitch);border-color:var(--pitch);color:var(--bg)}
+  .acct-greeting{font-size:16px;font-weight:600;color:var(--text)}
   .acct-form{display:grid;gap:10px;margin-top:14px;max-width:360px}
   .acct-form input{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;
     color:var(--text);font-family:'Archivo',sans-serif;font-size:14px;padding:11px 13px}
@@ -1081,6 +1104,58 @@ function computeWhoWins(fx, home, away, positions, h2h) {
   return { winTest, hWin, aWin, edge, wLean, shortLean };
 }
 
+// Contextual badges — hot streaks, venue form, and a specific honesty check: does
+// the team favoured on overall form actually have a GOOD head-to-head record
+// against THIS opponent, or is that edge resting on games against everyone else?
+function streakCount(games) {
+  // games are most-recent-first (confirmed by compteams.js's sort order)
+  let n = 0;
+  for (const m of games) { if (m.gf > m.ga) n++; else break; }
+  return n;
+}
+function venueForm(games, venue) {
+  const atVenue = games.filter(m => m.venue === venue);
+  if (atVenue.length < 3) return null; // too thin a slice of the window to say anything
+  const wins = atVenue.filter(m => m.gf > m.ga).length;
+  return { n: atVenue.length, rate: pct(wins, atVenue.length) };
+}
+function computeBadges(fx, home, away, h2h, edge) {
+  const badges = [];
+
+  const hStreak = streakCount(home), aStreak = streakCount(away);
+  if (hStreak >= 3) badges.push({ team: fx.home, level: 'good', text: `🔥 Won last ${hStreak} in a row` });
+  if (aStreak >= 3) badges.push({ team: fx.away, level: 'good', text: `🔥 Won last ${aStreak} in a row` });
+
+  const hHome = venueForm(home, 'H');
+  if (hHome) {
+    if (hHome.rate >= 70) badges.push({ team: fx.home, level: 'good', text: `🏠 Strong at home (${hHome.rate}%, ${hHome.n} games)` });
+    else if (hHome.rate <= 30) badges.push({ team: fx.home, level: 'bad', text: `🏠 Struggles at home (${hHome.rate}%, ${hHome.n} games)` });
+  }
+  const aAway = venueForm(away, 'A');
+  if (aAway) {
+    if (aAway.rate >= 70) badges.push({ team: fx.away, level: 'good', text: `✈️ Strong away (${aAway.rate}%, ${aAway.n} games)` });
+    else if (aAway.rate <= 30) badges.push({ team: fx.away, level: 'bad', text: `✈️ Struggles away (${aAway.rate}%, ${aAway.n} games)` });
+  }
+
+  // the H2H caution — only fires for the team the overall form/table lean actually
+  // favours, and only when that same team's record specifically against THIS
+  // opponent runs the other way. A real tension worth flagging, not a duplicate stat.
+  const H2H_MIN = 4;
+  if (h2h && !h2h.empty && h2h.total >= H2H_MIN && h2h.record) {
+    const favoured = edge >= 20 ? 'home' : edge <= -20 ? 'away' : null;
+    if (favoured === 'home') {
+      const hW = h2h.record[fx.home], aW = h2h.record[fx.away];
+      if (hW != null && aW != null && hW < aW)
+        badges.push({ team: fx.home, level: 'bad', text: `⚠️ Leads on form, but h2h here is ${hW}-${aW} against` });
+    } else if (favoured === 'away') {
+      const hW = h2h.record[fx.home], aW = h2h.record[fx.away];
+      if (hW != null && aW != null && aW < hW)
+        badges.push({ team: fx.away, level: 'bad', text: `⚠️ Leads on form, but h2h here is ${aW}-${hW} against` });
+    }
+  }
+  return badges;
+}
+
 // draws everything from two teams' last-WINDOW result arrays
 function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awaySpansPriorSeason) {
     const tag = `${fx.home} v ${fx.away}`;
@@ -1120,8 +1195,12 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
     }
 
     /* ---- WHO WINS? (form leads; league position and head-to-head play supporting roles) ---- */
-    const { winTest, wLean } = computeWhoWins(fx, home, away, positions, h2h);
+    const { winTest, wLean, edge } = computeWhoWins(fx, home, away, positions, h2h);
     const whoWins = compareCard('Who wins?', 'win', fx.home, home, fx.away, away, winTest, wLean, 'won', 'didn\u2019t');
+    const badgeList = computeBadges(fx, home, away, h2h, edge);
+    const badgesHtml = badgeList.length
+      ? `<div class="badges-row">${badgeList.map(b => `<span class="badge-tag ${b.level}"><b>${b.team}</b> ${b.text}</span>`).join('')}</div>`
+      : '';
     const hWinRate = breakdown(home, winTest).rate, aWinRate = breakdown(away, winTest).rate;
 
     /* ---- ALTERNATIVE RESULT MARKETS (double chance, draw) ---- */
@@ -1220,6 +1299,7 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
         <div class="form-team"><span class="label">${fx.home} form</span>${badges(home)}</div>
         <div class="form-team"><span class="label">${fx.away} form</span>${badges(away)}</div>
       </div>
+      ${badgesHtml}
       <div class="section-h">Result</div>${whoWins}
       ${h2hCard ? `<div class="section-h">Head to head</div>${h2hCard}` : ''}
 
@@ -1285,6 +1365,12 @@ function initBottomNav() {
    ============================================================ */
 let currentUser = null;
 
+// simple local-time greeting — nothing clever, just good morning/afternoon/evening
+function greeting() {
+  const h = new Date().getHours();
+  return h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+}
+
 function accountMsg(text, kind) {
   const el = document.getElementById('accountMsg');
   if (el) { el.textContent = text || ''; el.className = 'acct-msg' + (kind ? ' ' + kind : ''); }
@@ -1293,10 +1379,19 @@ function accountMsg(text, kind) {
 window.doSignUp = async function () {
   const email = document.getElementById('acctEmail').value.trim();
   const pw = document.getElementById('acctPw').value;
+  const username = document.getElementById('acctUsername').value.trim();
+  if (!username || username.length < 2) return accountMsg('Pick a username of at least 2 characters.', 'bad');
   if (!email || pw.length < 8) return accountMsg('Use a valid email and a password of at least 8 characters.', 'bad');
   accountMsg('Creating account…');
-  const { error } = await supa.auth.signUp({ email, password: pw });
-  accountMsg(error ? error.message : 'Account created — check your email to confirm the address before logging in.', error ? 'bad' : 'good');
+  const { data, error } = await supa.auth.signUp({ email, password: pw });
+  if (error) return accountMsg(error.message, 'bad');
+  // the profiles row is created automatically by a database trigger the moment
+  // signUp() resolves, so it's safe to set the username right away
+  if (data.user) {
+    const { error: profErr } = await supa.from('profiles').update({ display_name: username }).eq('id', data.user.id);
+    if (profErr) { accountMsg('Account created, but the username couldn\'t be saved — you can set it from your profile once you confirm your email.', 'bad'); return; }
+  }
+  accountMsg('Account created — check your email to confirm the address before logging in.', 'good');
 };
 
 window.doSignIn = async function () {
@@ -1357,19 +1452,52 @@ window.logSlip = async function () {
   showView('account');
 };
 
+let authMode = 'login'; // 'login' | 'signup' — toggled from the form itself
+window.setAuthMode = function (mode) { authMode = mode; renderAccount(); };
+
+// preview of a future Free/Pro split — purely illustrative, nothing here is wired
+// up to real billing or access control yet. Pricing intentionally left out since
+// that's a business call, not something to bake into a mockup.
+function planCard() {
+  const rows = [
+    ['Leagues covered', 'Premier League only', 'All 11 leagues'],
+    ['Best angles & track record', 'Premier League only', 'Every league'],
+    ['Match markets', 'Core markets', 'All 25+ markets'],
+    ['Bet tracking', '✓', '✓'],
+    ['Badges (streaks, H2H, venue form)', '—', '✓'],
+  ];
+  const rowsHtml = rows.map(([label, free, pro]) => `<div class="plan-row">
+    <span class="plan-label">${label}</span><span class="plan-val">${free}</span><span class="plan-val pro">${pro}</span></div>`).join('');
+  return `<div class="plan-card">
+    <div class="plan-head"><span class="plan-label"></span><span class="plan-col">Free</span><span class="plan-col pro">Pro</span></div>
+    ${rowsHtml}
+    <div class="plan-actions">
+      <span class="pill">You're on Free</span>
+      <button class="btn-ghost sm" disabled title="Not live yet">Upgrade to Pro — coming soon</button>
+    </div>
+  </div>`;
+}
+
 async function renderAccount() {
   const el = document.getElementById('accountBody');
   if (!currentUser) {
+    const isSignup = authMode === 'signup';
     el.innerHTML = `
       <div class="sub">Log your bets and HitRate keeps an honest record — wins and losses, and which markets you actually do well in.</div>
+      <div class="auth-toggle">
+        <button class="${!isSignup ? 'active' : ''}" onclick="setAuthMode('login')">Log in</button>
+        <button class="${isSignup ? 'active' : ''}" onclick="setAuthMode('signup')">Sign up</button>
+      </div>
       <div class="acct-form">
+        ${isSignup ? '<input id="acctUsername" type="text" placeholder="Username" autocomplete="nickname">' : ''}
         <input id="acctEmail" type="email" placeholder="Email" autocomplete="email">
-        <input id="acctPw" type="password" placeholder="Password (8+ characters)" autocomplete="current-password">
+        <input id="acctPw" type="password" placeholder="Password (8+ characters)" autocomplete="${isSignup ? 'new-password' : 'current-password'}">
         <div class="acct-actions">
-          <button class="btn-primary" onclick="doSignIn()">Log in</button>
-          <button class="btn-ghost" onclick="doSignUp()">Create account</button>
+          ${isSignup
+            ? '<button class="btn-primary" onclick="doSignUp()">Create account</button>'
+            : '<button class="btn-primary" onclick="doSignIn()">Log in</button>'}
         </div>
-        <button class="btn-link" onclick="doReset()">Forgot password</button>
+        ${!isSignup ? '<button class="btn-link" onclick="doReset()">Forgot password</button>' : ''}
       </div>
       <div id="accountMsg" class="acct-msg"></div>`;
     return;
@@ -1377,11 +1505,13 @@ async function renderAccount() {
 
   el.innerHTML = `<div class="sub">Signed in as ${currentUser.email}</div><div class="sub">Loading your record…</div>`;
 
-  const [recRes, mktRes, betsRes] = await Promise.all([
+  const [profRes, recRes, mktRes, betsRes] = await Promise.all([
+    supa.from('profiles').select('display_name').eq('id', currentUser.id).maybeSingle(),
     supa.from('my_record').select('*').maybeSingle(),
     supa.from('my_market_record').select('*').order('settled', { ascending: false }),
     supa.from('bets').select('*').order('created_at', { ascending: false }).limit(50),
   ]);
+  const displayName = profRes.data?.display_name || currentUser.email.split('@')[0];
   const rec = recRes.data, markets = mktRes.data || [], bets = betsRes.data || [];
 
   const stat = (label, value) => `<div class="acct-stat"><span class="v">${value}</span><span class="l">${label}</span></div>`;
@@ -1419,13 +1549,18 @@ async function renderAccount() {
 
   el.innerHTML = `
     <div class="acct-head">
-      <span class="sub">Signed in as <b>${currentUser.email}</b></span>
+      <div>
+        <div class="acct-greeting">${greeting()}, <b>${displayName}</b></div>
+        <span class="sub">${currentUser.email}</span>
+      </div>
       <button class="btn-ghost sm" onclick="doSignOut()">Log out</button>
     </div>
     ${summary}
     ${mktRows ? `<div class="section-h" style="margin-top:22px">By market</div><div class="dash-col">${mktRows}</div>` : ''}
     <div class="section-h" style="margin-top:22px">Your bets</div>
     ${betRows || '<div class="sub">Nothing logged yet.</div>'}
+    <div class="section-h" style="margin-top:22px">Plan</div>
+    ${planCard()}
     <div class="section-h" style="margin-top:22px">Settings</div>
     <div class="acct-form">
       <input id="newEmail" type="email" placeholder="New email address">
