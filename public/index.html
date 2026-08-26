@@ -224,6 +224,35 @@
   .slip-bar>div{height:100%;border-radius:999px;transition:width .4s}
   .slip-combined{font-family:'Space Mono',monospace;font-weight:700;font-size:18px}
   .slip-note{font-size:12px;color:var(--muted);line-height:1.5}
+  .acct-form{display:grid;gap:10px;margin-top:14px;max-width:360px}
+  .acct-form input{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;
+    color:var(--text);font-family:'Archivo',sans-serif;font-size:14px;padding:11px 13px}
+  .acct-form input:focus{outline:none;border-color:var(--pitch)}
+  .acct-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .btn-primary{all:unset;box-sizing:border-box;cursor:pointer;background:var(--pitch);color:var(--bg);
+    font-family:'Space Mono',monospace;font-size:12.5px;font-weight:700;padding:11px 18px;border-radius:10px;text-align:center}
+  .btn-primary.sm{padding:9px 14px;font-size:12px}
+  .btn-ghost{all:unset;box-sizing:border-box;cursor:pointer;border:1px solid var(--line);color:var(--text);
+    font-family:'Space Mono',monospace;font-size:12.5px;padding:10px 17px;border-radius:10px;text-align:center}
+  .btn-ghost.sm{padding:7px 12px;font-size:11px}
+  .btn-ghost:hover{border-color:var(--pitch)}
+  .btn-link{all:unset;box-sizing:border-box;cursor:pointer;color:var(--muted);font-size:12px;text-decoration:underline}
+  .acct-msg{margin-top:12px;font-size:13px;color:var(--muted);line-height:1.5}
+  .acct-msg.good{color:var(--good)} .acct-msg.bad{color:var(--bad)}
+  .acct-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+  .acct-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+  .acct-stat{background:var(--panel-2);border-radius:10px;padding:12px 8px;text-align:center}
+  .acct-stat .v{display:block;font-family:'Space Mono',monospace;font-weight:700;font-size:18px;color:var(--pitch)}
+  .acct-stat .l{display:block;font-size:10px;color:var(--muted);margin-top:3px}
+  .bet-row{background:var(--panel-2);border-radius:12px;padding:13px 15px;margin-bottom:8px}
+  .bet-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .bet-mkt{font-weight:600;font-size:13.5px;color:var(--text)}
+  .bet-sub{font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.5}
+  .bet-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+  .bet-actions button{all:unset;box-sizing:border-box;cursor:pointer;font-family:'Space Mono',monospace;
+    font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:8px;padding:5px 11px}
+  .bet-actions button:hover{border-color:var(--pitch);color:var(--text)}
+  .slip-log{display:block;width:100%;margin-top:12px}
   #bottomNav{position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;justify-content:space-around;
     background:var(--panel);border-top:1px solid var(--line);padding:9px 4px calc(9px + env(safe-area-inset-bottom))}
   .nav-item{all:unset;box-sizing:border-box;cursor:pointer;flex:1;min-width:0;display:flex;flex-direction:column;
@@ -263,6 +292,11 @@
     <section class="dash" id="tablesSection"></section>
   </div>
 
+  <div class="view" id="view-account" style="display:none">
+    <div class="picker-label">My account</div>
+    <section class="dash" id="accountBody"><div class="sub">Loading…</div></section>
+  </div>
+
   <div class="view" id="view-record" style="display:none">
     <div class="picker-label">Track record</div>
     <section class="dash" id="recordSection"></section>
@@ -279,9 +313,22 @@
   <button class="nav-item" data-nav="angles"><i class="nav-ico">▦</i><span>Angles</span></button>
   <button class="nav-item" data-nav="tables"><i class="nav-ico">≡</i><span>Tables</span></button>
   <button class="nav-item" data-nav="record"><i class="nav-ico">◈</i><span>Record</span></button>
+  <button class="nav-item" data-nav="account"><i class="nav-ico">◎</i><span>Account</span></button>
 </nav>
 
 <div id="slip"></div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+// Publishable key — safe in frontend code. Row Level Security in the database is
+// what actually protects the data, not the secrecy of this key.
+const SUPA_URL = 'https://oiksyumokpzypxmuydka.supabase.co';
+const SUPA_KEY = 'sb_publishable_3uFfc5UhwF6a5Ig3S7J_gw_KdQkJBBW';
+const supa = createClient(SUPA_URL, SUPA_KEY);
+window.supa = supa;
+if (window.initAuth) window.initAuth();
+</script>
 
 <script>
 /* ============================================================
@@ -490,7 +537,8 @@ function renderSlip() {
     <div class="slip-meter">
       <div class="slip-bar"><div style="width:${combined}%;background:${colour(cls)}"></div></div>
       <div class="slip-combined" style="color:${colour(cls)}">${combined}%</div></div>
-    <div class="slip-note">${slipNote(slip.length, combined)}</div>`;
+    <div class="slip-note">${slipNote(slip.length, combined)}</div>
+    <button class="btn-primary sm slip-log" onclick="logSlip()">${currentUser ? 'Log these picks' : 'Log in to track these'}</button>`;
 }
 
 /* ============================================================
@@ -1213,7 +1261,7 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
 
 // four genuine views — only one is on screen at a time, swapped by the bottom nav.
 // Everything is already loaded client-side, so switching costs nothing.
-const VIEWS = ['home', 'angles', 'tables', 'record'];
+const VIEWS = ['home', 'angles', 'tables', 'record', 'account'];
 function showView(name) {
   VIEWS.forEach(v => {
     const el = document.getElementById('view-' + v);
@@ -1227,6 +1275,179 @@ function initBottomNav() {
   document.getElementById('bottomNav').querySelectorAll('.nav-item')
     .forEach(btn => { btn.onclick = () => showView(btn.dataset.nav); });
 }
+
+
+/* ============================================================
+   ACCOUNTS + BET TRACKING (Supabase)
+   Auth is handled entirely by Supabase — we never see or store a password.
+   Every query below is scoped by Row Level Security in the database, so a user
+   can only ever read or write their own rows, whatever the frontend asks for.
+   ============================================================ */
+let currentUser = null;
+
+function accountMsg(text, kind) {
+  const el = document.getElementById('accountMsg');
+  if (el) { el.textContent = text || ''; el.className = 'acct-msg' + (kind ? ' ' + kind : ''); }
+}
+
+window.doSignUp = async function () {
+  const email = document.getElementById('acctEmail').value.trim();
+  const pw = document.getElementById('acctPw').value;
+  if (!email || pw.length < 8) return accountMsg('Use a valid email and a password of at least 8 characters.', 'bad');
+  accountMsg('Creating account…');
+  const { error } = await supa.auth.signUp({ email, password: pw });
+  accountMsg(error ? error.message : 'Account created — check your email to confirm the address before logging in.', error ? 'bad' : 'good');
+};
+
+window.doSignIn = async function () {
+  const email = document.getElementById('acctEmail').value.trim();
+  const pw = document.getElementById('acctPw').value;
+  accountMsg('Signing in…');
+  const { error } = await supa.auth.signInWithPassword({ email, password: pw });
+  if (error) accountMsg(error.message, 'bad');
+};
+
+window.doSignOut = async function () { await supa.auth.signOut(); };
+
+window.doChangeEmail = async function () {
+  const email = document.getElementById('newEmail').value.trim();
+  if (!email) return accountMsg('Enter the new email address.', 'bad');
+  accountMsg('Sending confirmation…');
+  const { error } = await supa.auth.updateUser({ email });
+  accountMsg(error ? error.message : 'Confirmation sent to the new address. The change applies once you click the link.', error ? 'bad' : 'good');
+};
+
+window.doReset = async function () {
+  const email = document.getElementById('acctEmail').value.trim();
+  if (!email) return accountMsg('Enter your email first, then tap reset.', 'bad');
+  const { error } = await supa.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+  accountMsg(error ? error.message : 'Password reset link sent.', error ? 'bad' : 'good');
+};
+
+// settle a bet — won / lost / void
+window.settleBet = async function (id, status) {
+  const { error } = await supa.from('bets')
+    .update({ status, settled_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) return accountMsg(error.message, 'bad');
+  renderAccount();
+};
+
+window.deleteBet = async function (id) {
+  const { error } = await supa.from('bets').delete().eq('id', id);
+  if (error) return accountMsg(error.message, 'bad');
+  renderAccount();
+};
+
+// save whatever is currently in the slip as pending bets
+window.logSlip = async function () {
+  if (!currentUser) { showView('account'); return; }
+  if (!slip.length) return;
+  const rows = slip.map(sel => ({
+    user_id: currentUser.id,
+    home_team: (sel.match.split(' v ')[0] || sel.match).trim(),
+    away_team: (sel.match.split(' v ')[1] || '').trim(),
+    market: sel.name,
+    selection: sel.name,
+    site_read_pct: sel.pct,
+  }));
+  const { error } = await supa.from('bets').insert(rows);
+  if (error) { alert('Could not save: ' + error.message); return; }
+  window.clearSlip();
+  showView('account');
+};
+
+async function renderAccount() {
+  const el = document.getElementById('accountBody');
+  if (!currentUser) {
+    el.innerHTML = `
+      <div class="sub">Log your bets and HitRate keeps an honest record — wins and losses, and which markets you actually do well in.</div>
+      <div class="acct-form">
+        <input id="acctEmail" type="email" placeholder="Email" autocomplete="email">
+        <input id="acctPw" type="password" placeholder="Password (8+ characters)" autocomplete="current-password">
+        <div class="acct-actions">
+          <button class="btn-primary" onclick="doSignIn()">Log in</button>
+          <button class="btn-ghost" onclick="doSignUp()">Create account</button>
+        </div>
+        <button class="btn-link" onclick="doReset()">Forgot password</button>
+      </div>
+      <div id="accountMsg" class="acct-msg"></div>`;
+    return;
+  }
+
+  el.innerHTML = `<div class="sub">Signed in as ${currentUser.email}</div><div class="sub">Loading your record…</div>`;
+
+  const [recRes, mktRes, betsRes] = await Promise.all([
+    supa.from('my_record').select('*').maybeSingle(),
+    supa.from('my_market_record').select('*').order('settled', { ascending: false }),
+    supa.from('bets').select('*').order('created_at', { ascending: false }).limit(50),
+  ]);
+  const rec = recRes.data, markets = mktRes.data || [], bets = betsRes.data || [];
+
+  const stat = (label, value) => `<div class="acct-stat"><span class="v">${value}</span><span class="l">${label}</span></div>`;
+  const summary = rec ? `
+    <div class="acct-stats">
+      ${stat('Settled', (rec.won || 0) + (rec.lost || 0))}
+      ${stat('Won', rec.won || 0)}
+      ${stat('Lost', rec.lost || 0)}
+      ${stat('Strike rate', rec.strike_rate == null ? '—' : rec.strike_rate + '%')}
+    </div>
+    ${rec.total_staked > 0 ? `<div class="working">Staked ${rec.total_staked} · P/L <b style="color:${rec.profit_loss >= 0 ? 'var(--good)' : 'var(--bad)'}">${rec.profit_loss >= 0 ? '+' : ''}${rec.profit_loss}</b></div>` : ''}`
+    : `<div class="sub">No bets logged yet. Add picks to your slip on a match, then tap “Log these picks”.</div>`;
+
+  const mktRows = markets.filter(m => m.settled > 0).map(m =>
+    `<div class="dash-item"><span class="nm">${m.market}<small>${m.won} of ${m.settled} settled</small></span>
+     <span class="st">${m.strike_rate == null ? '—' : m.strike_rate + '%'}</span></div>`).join('');
+
+  const betRows = bets.map(b => {
+    const when = new Date(b.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    const pill = b.status === 'won' ? '<span class="pill good">Won</span>'
+      : b.status === 'lost' ? '<span class="pill bad">Lost</span>'
+      : b.status === 'void' ? '<span class="pill">Void</span>' : '<span class="pill meh">Pending</span>';
+    const actions = b.status === 'pending'
+      ? `<div class="bet-actions">
+           <button onclick="settleBet('${b.id}','won')">Won</button>
+           <button onclick="settleBet('${b.id}','lost')">Lost</button>
+           <button onclick="settleBet('${b.id}','void')">Void</button>
+         </div>`
+      : `<div class="bet-actions"><button onclick="deleteBet('${b.id}')">Delete</button></div>`;
+    return `<div class="bet-row">
+      <div class="bet-top"><span class="bet-mkt">${b.market}</span>${pill}</div>
+      <div class="bet-sub">${b.home_team}${b.away_team ? ' v ' + b.away_team : ''} · logged ${when}${b.site_read_pct != null ? ` · our read ${b.site_read_pct}%` : ''}</div>
+      ${actions}</div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="acct-head">
+      <span class="sub">Signed in as <b>${currentUser.email}</b></span>
+      <button class="btn-ghost sm" onclick="doSignOut()">Log out</button>
+    </div>
+    ${summary}
+    ${mktRows ? `<div class="section-h" style="margin-top:22px">By market</div><div class="dash-col">${mktRows}</div>` : ''}
+    <div class="section-h" style="margin-top:22px">Your bets</div>
+    ${betRows || '<div class="sub">Nothing logged yet.</div>'}
+    <div class="section-h" style="margin-top:22px">Settings</div>
+    <div class="acct-form">
+      <input id="newEmail" type="email" placeholder="New email address">
+      <button class="btn-ghost" onclick="doChangeEmail()">Change email</button>
+    </div>
+    <div id="accountMsg" class="acct-msg"></div>`;
+}
+
+// The Supabase client is created in a module script, which browsers run AFTER
+// this one — so we expose an init the module calls once the client exists,
+// rather than reaching for `supa` before it's there.
+window.initAuth = function () {
+  supa.auth.onAuthStateChange((_event, session) => {
+    currentUser = session?.user || null;
+    renderAccount();
+    renderSlip();
+  });
+  supa.auth.getSession().then(({ data }) => {
+    currentUser = data.session?.user || null;
+    renderAccount();
+  });
+};
 
 loadFixtures();
 initInsightPanel();
