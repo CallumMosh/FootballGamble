@@ -511,16 +511,28 @@ function gamesToggle(tablesHtml) {
    selections multiplies the risk and shrinks your combined chance.
    ============================================================ */
 const slip = [];
-function slipBtn(name, matchTag, pct) {
+// fx carries the fixture id / competition / kickoff needed to auto-settle this
+// pick later; marketKey is a stable identifier (e.g. 'over25') a settlement
+// function can test against a final score — the display name alone can't be
+// parsed back reliably, so this rides alongside it rather than replacing it.
+function slipBtn(name, matchTag, pct, fx, marketKey) {
   const id = `${matchTag}::${name}`;
   return `<button class="slip-add" data-id="${id}" data-name="${name}" data-match="${matchTag}"
+    data-fixture-id="${fx?.id ?? ''}" data-competition-id="${fx?.competitionId ?? ''}"
+    data-kickoff="${fx?.date ?? ''}" data-market-key="${marketKey ?? ''}"
     onclick="toggleSlip(this, ${pct})">+ add to slip</button>`;
 }
 window.toggleSlip = function (btn, pct) {
   const id = btn.dataset.id;
   const i = slip.findIndex(s => s.id === id);
   if (i >= 0) slip.splice(i, 1);
-  else slip.push({ id, name: btn.dataset.name, match: btn.dataset.match, pct });
+  else slip.push({
+    id, name: btn.dataset.name, match: btn.dataset.match, pct,
+    fixtureId: btn.dataset.fixtureId || null,
+    competitionId: btn.dataset.competitionId || null,
+    kickoff: btn.dataset.kickoff || null,
+    marketKey: btn.dataset.marketKey || null,
+  });
   syncSlipButtons();
   renderSlip();
 };
@@ -727,9 +739,10 @@ async function loadInsights() {
 /* ============================================================
    CARD BUILDERS
    ============================================================ */
-function teamCard(name, infoKey, games, test, up, down, yesWord, noWord, teamName, matchTag) {
+function teamCard(name, infoKey, games, test, up, down, yesWord, noWord, teamName, fx, marketKey) {
   const b = breakdown(games, test);
   const v = verdict(b.rate, up, down);
+  const tag = `${fx.home} v ${fx.away}`;
   return `<div class="market">
     <div class="market-top"><span class="market-name">${name}${infoIcon(infoKey)}</span>
       <span class="market-stat" style="color:${colour(v.level)}">${b.rate}%</span></div>
@@ -738,12 +751,12 @@ function teamCard(name, infoKey, games, test, up, down, yesWord, noWord, teamNam
       <span class="verdict-text">${v.text}</span></div>
     <div class="working">${workingLine(b, yesWord, noWord)}</div>
     ${oddsBox(b.rate)}
-    ${slipBtn(name, matchTag, b.rate)}
+    ${slipBtn(name, tag, b.rate, fx, marketKey)}
     ${gamesToggle(gamesTable(games, test, teamName))}</div>`;
 }
 // opponent-aware: blends the team's own record with the opponent's matching record,
 // shown transparently. The team's own games are still listed for verification.
-function temperedCard(name, infoKey, games, test, oppFactor, oppText, up, down, yesWord, noWord, teamName, matchTag) {
+function temperedCard(name, infoKey, games, test, oppFactor, oppText, up, down, yesWord, noWord, teamName, fx, marketKey) {
   const own = breakdown(games, test);
   const tempered = Math.round((own.rate + oppFactor) / 2);
   const v = verdict(tempered, up, down);
@@ -752,6 +765,7 @@ function temperedCard(name, infoKey, games, test, oppFactor, oppText, up, down, 
     : tempered >= 45
     ? `A coin-flip at ~<b>${tempered}%</b> once the opponent's in — no clear edge, so lean cautious.`
     : `Looks unlikely at ~<b>${tempered}%</b> against this opponent. ${down}`;
+  const tag = `${fx.home} v ${fx.away}`;
   return `<div class="market">
     <div class="market-top"><span class="market-name">${name}${infoIcon(infoKey)}</span>
       <span class="market-stat" style="color:${colour(v.level)}">${tempered}%</span></div>
@@ -760,13 +774,14 @@ function temperedCard(name, infoKey, games, test, oppFactor, oppText, up, down, 
       <span class="verdict-text">${txt}</span></div>
     <div class="working">${teamName} own record <b>${own.rate}%</b> · ${oppText} → tempered to <b>${tempered}%</b>.<br>${workingLine(own, yesWord, noWord)}</div>
     ${oddsBox(tempered)}
-    ${slipBtn(name, matchTag, tempered)}
+    ${slipBtn(name, tag, tempered, fx, marketKey)}
     ${gamesToggle(gamesTable(games, test, teamName))}</div>`;
 }
-function combinedCard(name, infoKey, hGames, aGames, test, up, down, hName, aName, unit, matchTag) {
+function combinedCard(name, infoKey, hGames, aGames, test, up, down, hName, aName, unit, fx, marketKey) {
   const p = pooled(hGames, aGames, test);
   const v = verdict(p.rate, up, down);
   const tables = gamesTable(hGames, test, hName) + gamesTable(aGames, test, aName);
+  const tag = `${fx.home} v ${fx.away}`;
   return `<div class="market">
     <div class="market-top"><span class="market-name">${name}${infoIcon(infoKey)}</span>
       <span class="market-stat" style="color:${colour(v.level)}">${p.rate}%</span></div>
@@ -775,7 +790,7 @@ function combinedCard(name, infoKey, hGames, aGames, test, up, down, hName, aNam
       <span class="verdict-text">${v.text}</span></div>
     <div class="working">Pooled from both: ${hName} <span class="y">${p.hH}</span>/${p.hN} · ${aName} <span class="y">${p.aH}</span>/${p.aN} ${unit}</div>
     ${oddsBox(p.rate)}
-    ${slipBtn(name, matchTag, p.rate)}
+    ${slipBtn(name, tag, p.rate, fx, marketKey)}
     ${gamesToggle(tables)}</div>`;
 }
 // side-by-side comparison rows — one bar per side, scaled against the larger of the
@@ -805,18 +820,26 @@ function comparisonCard(title, hName, aName, rows, hGames, aGames) {
     ${tables ? gamesToggle(tables) : ''}</div>`;
 }
 
-function compareCard(title, infoKey, hName, hGames, aName, aGames, test, lean, yesWord, noWord, note) {
+// two-sided market (Who Wins, Ahead at half-time) — one card, two outcomes, so
+// two separate slip buttons rather than one. hKey/aKey are the settlement keys
+// for each side; pass fx so both carry the fixture context needed to auto-settle.
+function compareCard(title, infoKey, hName, hGames, aName, aGames, test, lean, yesWord, noWord, note, fx, hKey, aKey) {
   const hB = breakdown(hGames, test), aB = breakdown(aGames, test);
   const tables = gamesTable(hGames, test, hName) + gamesTable(aGames, test, aName);
+  const tag = fx ? `${fx.home} v ${fx.away}` : `${hName} v ${aName}`;
+  const hSlip = (fx && hKey) ? slipBtn(`${hName} — ${title}`, tag, hB.rate, fx, hKey) : '';
+  const aSlip = (fx && aKey) ? slipBtn(`${aName} — ${title}`, tag, aB.rate, fx, aKey) : '';
   return `<div class="market">
     <div class="market-top"><span class="market-name">${title}${infoIcon(infoKey)}</span></div>
     <div class="compare">
       <div class="side"><div class="t">${hName}</div>
         <div class="p" style="color:var(--pitch)">${hB.rate}%</div>
-        <div class="w">${workingLine(hB, yesWord, noWord)}</div></div>
+        <div class="w">${workingLine(hB, yesWord, noWord)}</div>
+        ${hSlip}</div>
       <div class="side"><div class="t">${aName}</div>
         <div class="p" style="color:var(--pitch2)">${aB.rate}%</div>
-        <div class="w">${workingLine(aB, yesWord, noWord)}</div></div>
+        <div class="w">${workingLine(aB, yesWord, noWord)}</div>
+        ${aSlip}</div>
     </div>
     <div class="verdict" style="margin-top:14px"><span class="verdict-text">${lean}</span></div>
     ${note ? `<div class="lead-note">${note}</div>` : ''}
@@ -1199,7 +1222,7 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
 
     /* ---- WHO WINS? (form leads; league position and head-to-head play supporting roles) ---- */
     const { winTest, wLean, edge } = computeWhoWins(fx, home, away, positions, h2h);
-    const whoWins = compareCard('Who wins?', 'win', fx.home, home, fx.away, away, winTest, wLean, 'won', 'didn\u2019t');
+    const whoWins = compareCard('Who wins?', 'win', fx.home, home, fx.away, away, winTest, wLean, 'won', 'didn\u2019t', null, fx, 'win_home', 'win_away');
     const badgeList = computeBadges(fx, home, away, h2h, edge);
     const badgesHtml = badgeList.length
       ? `<div class="badges-row">${badgeList.map(b => `<span class="badge-tag ${b.level}"><b>${b.team}</b> ${b.text}</span>`).join('')}</div>`
@@ -1210,11 +1233,11 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
     const notLostTest = m => m.gf >= m.ga;
     const altResults = [
       temperedCard(`${fx.home} — Home or Draw`, 'dchand', home, notLostTest, 100 - aWinRate, `${fx.away} win ${aWinRate}% of their own games`,
-        'A losing result looks unlikely.', 'The visitors have been winning plenty themselves.', 'didn\u2019t lose', 'lost', fx.home, tag),
+        'A losing result looks unlikely.', 'The visitors have been winning plenty themselves.', 'didn\u2019t lose', 'lost', fx.home, fx, 'dc_home'),
       temperedCard(`${fx.away} — Away or Draw`, 'dchand', away, notLostTest, 100 - hWinRate, `${fx.home} win ${hWinRate}% of their own games`,
-        'A losing result looks unlikely.', 'The hosts have been winning plenty themselves.', 'didn\u2019t lose', 'lost', fx.away, tag),
-      combinedCard('Either Team Wins (No Draw)', 'dcwin', home, away, m => m.gf !== m.ga, 'Decisive results have been common.', 'Draws have cropped up a fair bit.', fx.home, fx.away, 'not drawn', tag),
-      combinedCard('Draw', 'draw', home, away, m => m.gf === m.ga, 'Level finishes keep happening.', 'Draws have been rare.', fx.home, fx.away, 'drawn', tag),
+        'A losing result looks unlikely.', 'The hosts have been winning plenty themselves.', 'didn\u2019t lose', 'lost', fx.away, fx, 'dc_away'),
+      combinedCard('Either Team Wins (No Draw)', 'dcwin', home, away, m => m.gf !== m.ga, 'Decisive results have been common.', 'Draws have cropped up a fair bit.', fx.home, fx.away, 'not drawn', fx, 'not_drawn'),
+      combinedCard('Draw', 'draw', home, away, m => m.gf === m.ga, 'Level finishes keep happening.', 'Draws have been rare.', fx.home, fx.away, 'drawn', fx, 'drawn'),
     ];
 
     /* ---- AHEAD AT HALF-TIME (+ other first-half markets) ---- */
@@ -1230,10 +1253,10 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
       else                                    fLean = `Neither side reliably leads at the break — a fast start from either is plausible.`;
       const htCards = [
         compareCard('Ahead at half-time', 'half', fx.home, hG, fx.away, aG, leadTest, fLean, 'ahead', 'not',
-          'Half-time lead only — a proxy for an early goal, since the free data has scores but not goal times.'),
-        teamCard(`${fx.home} scores in first half`, 'fh1', hG, m => m.htGf > 0, 'A quick start looks likely.', 'Slow starters lately.', 'scored', 'blank', fx.home, tag),
-        teamCard(`${fx.away} scores in first half`, 'fh1', aG, m => m.htGf > 0, 'A quick start looks likely.', 'Slow starters lately.', 'scored', 'blank', fx.away, tag),
-        combinedCard('BTTS In First Half', 'fhbtts', hG, aG, m => m.htGf > 0 && m.htGa > 0, 'Both sides have been finding the net early.', 'A quiet first half looks more likely.', fx.home, fx.away, 'both scored by HT', tag),
+          'Half-time lead only — a proxy for an early goal, since the free data has scores but not goal times.', fx, 'ht_lead_home', 'ht_lead_away'),
+        teamCard(`${fx.home} scores in first half`, 'fh1', hG, m => m.htGf > 0, 'A quick start looks likely.', 'Slow starters lately.', 'scored', 'blank', fx.home, fx, 'fh_score_home'),
+        teamCard(`${fx.away} scores in first half`, 'fh1', aG, m => m.htGf > 0, 'A quick start looks likely.', 'Slow starters lately.', 'scored', 'blank', fx.away, fx, 'fh_score_away'),
+        combinedCard('BTTS In First Half', 'fhbtts', hG, aG, m => m.htGf > 0 && m.htGa > 0, 'Both sides have been finding the net early.', 'A quiet first half looks more likely.', fx.home, fx.away, 'both scored by HT', fx, 'fh_btts'),
       ];
       firstHalf = htCards.join('');
     }
@@ -1242,25 +1265,25 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
     const secondHalf = [];
     if (hasHT) {
       secondHalf.push(
-        teamCard(`${fx.home} leads at HT and wins`, 'htftw', hG, m => m.htGf > m.htGa && m.gf > m.ga, 'When on top at the break, they tend to see it through.', 'A half-time lead hasn\u2019t always held up.', 'did', 'didn\u2019t', fx.home, tag),
-        teamCard(`${fx.away} leads at HT and wins`, 'htftw', aG, m => m.htGf > m.htGa && m.gf > m.ga, 'When on top at the break, they tend to see it through.', 'A half-time lead hasn\u2019t always held up.', 'did', 'didn\u2019t', fx.away, tag),
-        combinedCard('Over 1.5 Second-Half Goals', 'sh15', hG, aG, m => (m.gf - m.htGf) + (m.ga - m.htGa) > 1.5, 'The second half has usually had plenty in it.', 'Second halves have been quiet.', fx.home, fx.away, 'over 1.5 in 2nd half', tag),
+        teamCard(`${fx.home} leads at HT and wins`, 'htftw', hG, m => m.htGf > m.htGa && m.gf > m.ga, 'When on top at the break, they tend to see it through.', 'A half-time lead hasn\u2019t always held up.', 'did', 'didn\u2019t', fx.home, fx, 'htftw_home'),
+        teamCard(`${fx.away} leads at HT and wins`, 'htftw', aG, m => m.htGf > m.htGa && m.gf > m.ga, 'When on top at the break, they tend to see it through.', 'A half-time lead hasn\u2019t always held up.', 'did', 'didn\u2019t', fx.away, fx, 'htftw_away'),
+        combinedCard('Over 1.5 Second-Half Goals', 'sh15', hG, aG, m => (m.gf - m.htGf) + (m.ga - m.htGa) > 1.5, 'The second half has usually had plenty in it.', 'Second halves have been quiet.', fx.home, fx.away, 'over 1.5 in 2nd half', fx, 'sh_over15'),
       );
     }
     secondHalf.push(
       temperedCard(`${fx.home} — Win To Nil`, 'wtn', home, m => m.gf > m.ga && m.ga === 0, 100 - aScore, `${fx.away} score in ${aScore}% of their own games`,
-        'A shutout win looks plausible.', 'The visitors have been getting on the scoresheet themselves.', 'won to nil', 'didn\u2019t', fx.home, tag),
+        'A shutout win looks plausible.', 'The visitors have been getting on the scoresheet themselves.', 'won to nil', 'didn\u2019t', fx.home, fx, 'wtn_home'),
       temperedCard(`${fx.away} — Win To Nil`, 'wtn', away, m => m.gf > m.ga && m.ga === 0, 100 - hScore, `${fx.home} score in ${hScore}% of their own games`,
-        'A shutout win looks plausible.', 'The hosts have been getting on the scoresheet themselves.', 'won to nil', 'didn\u2019t', fx.away, tag),
-      combinedCard('BTTS & Over 2.5', 'bttso25', home, away, m => m.gf > 0 && m.ga > 0 && m.gf + m.ga > 2.5, 'These games tend to have goals at both ends.', 'This combination hasn\u2019t landed often.', fx.home, fx.away, 'BTTS & over 2.5', tag),
+        'A shutout win looks plausible.', 'The hosts have been getting on the scoresheet themselves.', 'won to nil', 'didn\u2019t', fx.away, fx, 'wtn_away'),
+      combinedCard('BTTS & Over 2.5', 'bttso25', home, away, m => m.gf > 0 && m.ga > 0 && m.gf + m.ga > 2.5, 'These games tend to have goals at both ends.', 'This combination hasn\u2019t landed often.', fx.home, fx.away, 'BTTS & over 2.5', fx, 'btts_over25'),
     );
 
     /* ---- GOALS (pooled) ---- */
     const goals = [
-      combinedCard('Over 1.5 Goals', 'o15', home, away, m => m.gf + m.ga > 1.5, 'Plenty of 2+ goal games.', 'These have been tight.', fx.home, fx.away, 'over 1.5', tag),
-      combinedCard('Over 2.5 Goals', 'o25', home, away, m => m.gf + m.ga > 2.5, 'Lots of high-scoring games.', 'Recent games have been low-scoring.', fx.home, fx.away, 'over 2.5', tag),
-      combinedCard('Over 3.5 Goals', 'o35', home, away, m => m.gf + m.ga > 3.5, 'Genuine goal-fests lately.', 'Rarely this many goals.', fx.home, fx.away, 'over 3.5', tag),
-      combinedCard('Both Teams To Score', 'btts', home, away, m => m.gf > 0 && m.ga > 0, 'Both ends busy.', 'One side often kept quiet.', fx.home, fx.away, 'both scored', tag),
+      combinedCard('Over 1.5 Goals', 'o15', home, away, m => m.gf + m.ga > 1.5, 'Plenty of 2+ goal games.', 'These have been tight.', fx.home, fx.away, 'over 1.5', fx, 'over15'),
+      combinedCard('Over 2.5 Goals', 'o25', home, away, m => m.gf + m.ga > 2.5, 'Lots of high-scoring games.', 'Recent games have been low-scoring.', fx.home, fx.away, 'over 2.5', fx, 'over25'),
+      combinedCard('Over 3.5 Goals', 'o35', home, away, m => m.gf + m.ga > 3.5, 'Genuine goal-fests lately.', 'Rarely this many goals.', fx.home, fx.away, 'over 3.5', fx, 'over35'),
+      combinedCard('Both Teams To Score', 'btts', home, away, m => m.gf > 0 && m.ga > 0, 'Both ends busy.', 'One side often kept quiet.', fx.home, fx.away, 'both scored', fx, 'btts'),
     ];
 
     /* ---- MATCHUP ANGLE (attack vs defence narrative) ---- */
@@ -1273,12 +1296,12 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
 
     /* ---- EACH TEAM (opponent-aware) ---- */
     const da = [
-      temperedCard(`${fx.home} to score`,    'score', home, scoreTest, 100 - aClean, `${fx.away} concede in ${100 - aClean}%`, 'Reliable in front of goal.', 'Blunt going forward lately.', 'scored', 'blank', fx.home, tag),
-      temperedCard(`${fx.away} to score`,    'score', away, scoreTest, 100 - hClean, `${fx.home} concede in ${100 - hClean}%`, 'Reliable in front of goal.', 'Blunt going forward lately.', 'scored', 'blank', fx.away, tag),
-      temperedCard(`${fx.home} clean sheet`, 'clean', home, cleanTest, 100 - aScore, `${fx.away} fail to score in ${100 - aScore}%`, 'Solid at the back.', 'Leaky lately.', 'kept', 'conceded', fx.home, tag),
-      temperedCard(`${fx.away} clean sheet`, 'clean', away, cleanTest, 100 - hScore, `${fx.home} fail to score in ${100 - hScore}%`, 'Solid at the back.', 'Leaky lately.', 'kept', 'conceded', fx.away, tag),
-      temperedCard(`${fx.home} — Under 1.5 Conceded`, 'conc15', home, m => m.ga <= 1, 100 - aScore, `${fx.away} score in ${aScore}%`, 'Rarely concede more than one.', 'Have been shipping goals lately.', 'held to 1 or fewer', 'conceded 2+', fx.home, tag),
-      temperedCard(`${fx.away} — Under 1.5 Conceded`, 'conc15', away, m => m.ga <= 1, 100 - hScore, `${fx.home} score in ${hScore}%`, 'Rarely concede more than one.', 'Have been shipping goals lately.', 'held to 1 or fewer', 'conceded 2+', fx.away, tag),
+      temperedCard(`${fx.home} to score`,    'score', home, scoreTest, 100 - aClean, `${fx.away} concede in ${100 - aClean}%`, 'Reliable in front of goal.', 'Blunt going forward lately.', 'scored', 'blank', fx.home, fx, 'score_home'),
+      temperedCard(`${fx.away} to score`,    'score', away, scoreTest, 100 - hClean, `${fx.home} concede in ${100 - hClean}%`, 'Reliable in front of goal.', 'Blunt going forward lately.', 'scored', 'blank', fx.away, fx, 'score_away'),
+      temperedCard(`${fx.home} clean sheet`, 'clean', home, cleanTest, 100 - aScore, `${fx.away} fail to score in ${100 - aScore}%`, 'Solid at the back.', 'Leaky lately.', 'kept', 'conceded', fx.home, fx, 'clean_home'),
+      temperedCard(`${fx.away} clean sheet`, 'clean', away, cleanTest, 100 - hScore, `${fx.home} fail to score in ${100 - hScore}%`, 'Solid at the back.', 'Leaky lately.', 'kept', 'conceded', fx.away, fx, 'clean_away'),
+      temperedCard(`${fx.home} — Under 1.5 Conceded`, 'conc15', home, m => m.ga <= 1, 100 - aScore, `${fx.away} score in ${aScore}%`, 'Rarely concede more than one.', 'Have been shipping goals lately.', 'held to 1 or fewer', 'conceded 2+', fx.home, fx, 'conc15_home'),
+      temperedCard(`${fx.away} — Under 1.5 Conceded`, 'conc15', away, m => m.ga <= 1, 100 - hScore, `${fx.home} score in ${hScore}%`, 'Rarely concede more than one.', 'Have been shipping goals lately.', 'held to 1 or fewer', 'conceded 2+', fx.away, fx, 'conc15_away'),
     ];
 
     const badges = g => form(g).map(r => `<span class="badge ${r}">${r}</span>`).join('');
@@ -1368,6 +1391,102 @@ function initBottomNav() {
    ============================================================ */
 let currentUser = null;
 
+/* ============================================================
+   AUTO-SETTLEMENT — grades pending bets against real results once
+   the match is over. Runs once per login (not on every re-render),
+   and only ever checks the small number of fixtures the signed-in
+   user actually has pending bets on — see api/settle.js for the
+   rate-limit reasoning. Bets logged before this existed have no
+   fixture_id/market_key and simply stay manual-only forever.
+   ============================================================ */
+// each test reads the FIXTURE's final score (never mind which specific team the
+// bet names) — home/away is already baked into the key itself (e.g. win_home).
+// HT-dependent tests return null (can't grade, not "lost") if HT data is missing.
+const MARKET_TESTS = {
+  win_home:      r => r.hg > r.ag,
+  win_away:      r => r.ag > r.hg,
+  dc_home:       r => r.hg >= r.ag,
+  dc_away:       r => r.ag >= r.hg,
+  not_drawn:     r => r.hg !== r.ag,
+  drawn:         r => r.hg === r.ag,
+  over15:        r => r.hg + r.ag > 1.5,
+  over25:        r => r.hg + r.ag > 2.5,
+  over35:        r => r.hg + r.ag > 3.5,
+  btts:          r => r.hg > 0 && r.ag > 0,
+  score_home:    r => r.hg > 0,
+  score_away:    r => r.ag > 0,
+  clean_home:    r => r.ag === 0,
+  clean_away:    r => r.hg === 0,
+  conc15_home:   r => r.ag <= 1,
+  conc15_away:   r => r.hg <= 1,
+  wtn_home:      r => r.hg > r.ag && r.ag === 0,
+  wtn_away:      r => r.ag > r.hg && r.hg === 0,
+  btts_over25:   r => r.hg > 0 && r.ag > 0 && (r.hg + r.ag) > 2.5,
+  ht_lead_home:  r => r.htHg == null ? null : r.htHg > r.htAg,
+  ht_lead_away:  r => r.htHg == null ? null : r.htAg > r.htHg,
+  fh_score_home: r => r.htHg == null ? null : r.htHg > 0,
+  fh_score_away: r => r.htAg == null ? null : r.htAg > 0,
+  fh_btts:       r => (r.htHg == null || r.htAg == null) ? null : (r.htHg > 0 && r.htAg > 0),
+  htftw_home:    r => r.htHg == null ? null : (r.htHg > r.htAg && r.hg > r.ag),
+  htftw_away:    r => r.htHg == null ? null : (r.htAg > r.htHg && r.ag > r.hg),
+  sh_over15:     r => r.htHg == null ? null : ((r.hg - r.htHg) + (r.ag - r.htAg) > 1.5),
+};
+
+const SETTLE_STATUSES = new Set(['POSTPONED', 'CANCELLED', 'SUSPENDED']);
+const VOIDABLE_MISSING_SCORE = new Set(['FINISHED', 'AWARDED']); // shouldn't happen, but if a "finished" match has no score, don't guess
+
+// only attempt a fixture once its kickoff was a couple of hours ago — no point
+// calling the API for a match that's still being played or hasn't started
+const SETTLE_DELAY_MS = 2 * 60 * 60 * 1000;
+
+let autoSettleRan = false;
+async function checkAutoSettle() {
+  if (autoSettleRan || !currentUser) return;
+  autoSettleRan = true;
+  try {
+    const { data: pending } = await supa.from('bets')
+      .select('id, fixture_id, market_key, kickoff, status')
+      .eq('status', 'pending')
+      .not('fixture_id', 'is', null)
+      .not('market_key', 'is', null);
+    if (!pending || !pending.length) return;
+
+    const now = Date.now();
+    const due = pending.filter(b => b.kickoff && (now - new Date(b.kickoff).getTime()) > SETTLE_DELAY_MS);
+    if (!due.length) return;
+
+    const ids = [...new Set(due.map(b => b.fixture_id))];
+    const results = await fetchJson(`/api/settle?ids=${ids.join(',')}`);
+    if (!results) return;
+
+    let anySettled = false;
+    for (const bet of due) {
+      const r = results[bet.fixture_id];
+      if (!r) continue;
+
+      if (SETTLE_STATUSES.has(r.status)) {
+        await supa.from('bets').update({ status: 'void', settled_at: new Date().toISOString() }).eq('id', bet.id);
+        anySettled = true;
+        continue;
+      }
+      if (r.status !== 'FINISHED' && r.status !== 'AWARDED') continue; // still in progress, not due yet — leave pending
+      if (r.hg == null || r.ag == null) continue; // "finished" with no score is unexpected — leave for manual check rather than guess
+
+      const test = MARKET_TESTS[bet.market_key];
+      if (!test) continue; // unrecognised key (shouldn't happen) — leave for manual grading
+      const hit = test(r);
+      if (hit == null) continue; // needed half-time data wasn't available — leave pending rather than mis-grade
+
+      await supa.from('bets').update({ status: hit ? 'won' : 'lost', settled_at: new Date().toISOString() }).eq('id', bet.id);
+      anySettled = true;
+    }
+    if (anySettled) renderAccount(); // refresh whatever's currently on screen
+  } catch (e) {
+    // settlement is a nice-to-have layered on top of manual grading — never let
+    // it break the account page if the API call or a query fails
+  }
+}
+
 // simple local-time greeting — nothing clever, just good morning/afternoon/evening
 function greeting() {
   const h = new Date().getHours();
@@ -1448,6 +1567,12 @@ window.logSlip = async function () {
     market: sel.name,
     selection: sel.name,
     site_read_pct: sel.pct,
+    // carried through from the slip button so this bet can be auto-graded later —
+    // without these, it falls back to manual Won/Lost/Void only
+    fixture_id: sel.fixtureId || null,
+    competition: sel.competitionId ? String(sel.competitionId) : null,
+    kickoff: sel.kickoff || null,
+    market_key: sel.marketKey || null,
   }));
   const { error } = await supa.from('bets').insert(rows);
   if (error) { alert('Could not save: ' + error.message); return; }
@@ -1577,13 +1702,17 @@ async function renderAccount() {
 // rather than reaching for `supa` before it's there.
 window.initAuth = function () {
   supa.auth.onAuthStateChange((_event, session) => {
-    currentUser = session?.user || null;
+    const newUser = session?.user || null;
+    if (newUser?.id !== currentUser?.id) autoSettleRan = false; // different user (or a fresh sign-in) — allow settlement to run again
+    currentUser = newUser;
     renderAccount();
     renderSlip();
+    if (currentUser) checkAutoSettle(); // quietly grades any due bets, then refreshes if it changed anything
   });
   supa.auth.getSession().then(({ data }) => {
     currentUser = data.session?.user || null;
     renderAccount();
+    if (currentUser) checkAutoSettle();
   });
 };
 
