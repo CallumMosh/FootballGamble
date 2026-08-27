@@ -80,6 +80,20 @@
   .matchup .at{color:#ffffff}
   .disclaimer{font-size:13px;color:var(--muted);border-left:2px solid var(--line);
     padding-left:14px;margin:16px 0 4px;line-height:1.6}
+  .mkt-group{background:var(--panel);border-radius:14px;padding:6px 20px;margin-bottom:10px}
+  .mkt-row{padding:13px 0;border-bottom:1px solid var(--line)}
+  .mkt-row:last-child{border-bottom:none}
+  .mkt-row-head{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:10px;width:100%;cursor:pointer}
+  .mkt-row-pct{font-family:'Space Mono',monospace;font-weight:700;font-size:14px;min-width:34px}
+  .mkt-row-label{flex:1;font-size:12.5px;color:var(--text);display:flex;align-items:center;gap:4px}
+  .mkt-row-chev{font-size:11px;color:var(--muted);transition:transform .15s}
+  .mkt-row.open .mkt-row-chev{transform:rotate(180deg)}
+  .mkt-row-bar{height:4px;background:var(--bg);border-radius:999px;margin-top:7px;overflow:hidden}
+  .mkt-row-bar div{height:100%;border-radius:999px}
+  .mkt-row-bars{display:flex;gap:2px;height:4px;margin-top:7px;border-radius:999px;overflow:hidden}
+  .mkt-row-bars i{display:block;border-radius:2px}
+  .mkt-row-detail{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+  .mkt-row-reason{font-size:11.5px;color:var(--muted);line-height:1.6;margin-bottom:8px}
   .cmp-card{background:var(--panel);border-radius:14px;padding:18px 20px;margin-bottom:10px}
   .cmp-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:16px}
   .cmp-games-h{font-family:'Space Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1px;
@@ -727,19 +741,43 @@ async function loadInsights() {
 /* ============================================================
    CARD BUILDERS
    ============================================================ */
+/* single-value market row — collapsed shows just the percentage, label and a thin
+   bar; tapping reveals the reasoning, odds check, slip button and games table.
+   Every market builder below computes its own rate/reasoning then hands off here,
+   so the underlying maths (breakdown/pooled/tempered) is completely unchanged. */
+let _rowUid = 0;
+function marketRow(name, infoKey, rate, level, reasoning, detailExtra) {
+  const id = 'mrow' + (++_rowUid);
+  return `<div class="mkt-row">
+    <button class="mkt-row-head" onclick="toggleRow(this)">
+      <span class="mkt-row-pct" style="color:${colour(level)}">${rate}%</span>
+      <span class="mkt-row-label">${name}${infoIcon(infoKey)}</span>
+      <span class="mkt-row-chev">▾</span>
+    </button>
+    <div class="mkt-row-bar"><div style="width:${rate}%;background:${colour(level)}"></div></div>
+    <div class="mkt-row-detail" id="${id}" style="display:none">
+      <div class="mkt-row-reason">${reasoning}</div>
+      ${detailExtra}
+    </div>
+  </div>`;
+}
+window.toggleRow = function (head) {
+  const row = head.closest('.mkt-row');
+  const detail = row.querySelector('.mkt-row-detail');
+  const open = detail.style.display === 'block';
+  detail.style.display = open ? 'none' : 'block';
+  row.classList.toggle('open', !open);
+};
+// wraps a run of rows from one section into a single enclosing card, matching
+// the team-form comparison card's visual language rather than one box per market
+function mktGroup(rowsHtml) { return `<div class="mkt-group">${rowsHtml}</div>`; }
+
 function teamCard(name, infoKey, games, test, up, down, yesWord, noWord, teamName, matchTag) {
   const b = breakdown(games, test);
   const v = verdict(b.rate, up, down);
-  return `<div class="market">
-    <div class="market-top"><span class="market-name">${name}${infoIcon(infoKey)}</span>
-      <span class="market-stat" style="color:${colour(v.level)}">${b.rate}%</span></div>
-    <div class="bar"><div style="width:${b.rate}%;background:${colour(v.level)}"></div></div>
-    <div class="verdict"><span class="pill ${v.level}">${v.label}</span>
-      <span class="verdict-text">${v.text}</span></div>
-    <div class="working">${workingLine(b, yesWord, noWord)}</div>
-    ${oddsBox(b.rate)}
-    ${slipBtn(name, matchTag, b.rate)}
-    ${gamesToggle(gamesTable(games, test, teamName))}</div>`;
+  const detail = `${oddsBox(b.rate)}${slipBtn(name, matchTag, b.rate)}${gamesToggle(gamesTable(games, test, teamName))}`;
+  const reasoning = `${v.text}<br>${workingLine(b, yesWord, noWord)}`;
+  return marketRow(name, infoKey, b.rate, v.level, reasoning, detail);
 }
 // opponent-aware: blends the team's own record with the opponent's matching record,
 // shown transparently. The team's own games are still listed for verification.
@@ -752,31 +790,17 @@ function temperedCard(name, infoKey, games, test, oppFactor, oppText, up, down, 
     : tempered >= 45
     ? `A coin-flip at ~<b>${tempered}%</b> once the opponent's in — no clear edge, so lean cautious.`
     : `Looks unlikely at ~<b>${tempered}%</b> against this opponent. ${down}`;
-  return `<div class="market">
-    <div class="market-top"><span class="market-name">${name}${infoIcon(infoKey)}</span>
-      <span class="market-stat" style="color:${colour(v.level)}">${tempered}%</span></div>
-    <div class="bar"><div style="width:${tempered}%;background:${colour(v.level)}"></div></div>
-    <div class="verdict"><span class="pill ${v.level}">${v.label}</span>
-      <span class="verdict-text">${txt}</span></div>
-    <div class="working">${teamName} own record <b>${own.rate}%</b> · ${oppText} → tempered to <b>${tempered}%</b>.<br>${workingLine(own, yesWord, noWord)}</div>
-    ${oddsBox(tempered)}
-    ${slipBtn(name, matchTag, tempered)}
-    ${gamesToggle(gamesTable(games, test, teamName))}</div>`;
+  const detail = `${oddsBox(tempered)}${slipBtn(name, matchTag, tempered)}${gamesToggle(gamesTable(games, test, teamName))}`;
+  const reasoning = `${txt}<br>${teamName} own record <b>${own.rate}%</b> · ${oppText} → tempered to <b>${tempered}%</b>.<br>${workingLine(own, yesWord, noWord)}`;
+  return marketRow(name, infoKey, tempered, v.level, reasoning, detail);
 }
 function combinedCard(name, infoKey, hGames, aGames, test, up, down, hName, aName, unit, matchTag) {
   const p = pooled(hGames, aGames, test);
   const v = verdict(p.rate, up, down);
   const tables = gamesTable(hGames, test, hName) + gamesTable(aGames, test, aName);
-  return `<div class="market">
-    <div class="market-top"><span class="market-name">${name}${infoIcon(infoKey)}</span>
-      <span class="market-stat" style="color:${colour(v.level)}">${p.rate}%</span></div>
-    <div class="bar"><div style="width:${p.rate}%;background:${colour(v.level)}"></div></div>
-    <div class="verdict"><span class="pill ${v.level}">${v.label}</span>
-      <span class="verdict-text">${v.text}</span></div>
-    <div class="working">Pooled from both: ${hName} <span class="y">${p.hH}</span>/${p.hN} · ${aName} <span class="y">${p.aH}</span>/${p.aN} ${unit}</div>
-    ${oddsBox(p.rate)}
-    ${slipBtn(name, matchTag, p.rate)}
-    ${gamesToggle(tables)}</div>`;
+  const detail = `${oddsBox(p.rate)}${slipBtn(name, matchTag, p.rate)}${gamesToggle(tables)}`;
+  const reasoning = `${v.text}<br>Pooled from both: ${hName} <span class="y">${p.hH}</span>/${p.hN} · ${aName} <span class="y">${p.aH}</span>/${p.aN} ${unit}`;
+  return marketRow(name, infoKey, p.rate, v.level, reasoning, detail);
 }
 // side-by-side comparison rows — one bar per side, scaled against the larger of the
 // two so the visual gap reflects the real gap rather than always filling the width
@@ -805,22 +829,31 @@ function comparisonCard(title, hName, aName, rows, hGames, aGames) {
     ${tables ? gamesToggle(tables) : ''}</div>`;
 }
 
+// two-sided market row (Who Wins, Ahead at half-time) — same paired-bar language
+// as the Team Form comparison, wrapped in the same tap-to-expand shell as every
+// other market so the whole match view now behaves one consistent way
 function compareCard(title, infoKey, hName, hGames, aName, aGames, test, lean, yesWord, noWord, note) {
   const hB = breakdown(hGames, test), aB = breakdown(aGames, test);
   const tables = gamesTable(hGames, test, hName) + gamesTable(aGames, test, aName);
-  return `<div class="market">
-    <div class="market-top"><span class="market-name">${title}${infoIcon(infoKey)}</span></div>
-    <div class="compare">
-      <div class="side"><div class="t">${hName}</div>
-        <div class="p" style="color:var(--pitch)">${hB.rate}%</div>
-        <div class="w">${workingLine(hB, yesWord, noWord)}</div></div>
-      <div class="side"><div class="t">${aName}</div>
-        <div class="p" style="color:var(--pitch2)">${aB.rate}%</div>
-        <div class="w">${workingLine(aB, yesWord, noWord)}</div></div>
+  const max = Math.max(hB.rate, aB.rate, 1);
+  const detail = `${note ? `<div class="lead-note">${note}</div>` : ''}${gamesToggle(tables)}`;
+  const reasoning = `${lean}<br>${hName}: ${workingLine(hB, yesWord, noWord)}<br>${aName}: ${workingLine(aB, yesWord, noWord)}`;
+  const id = 'mrow' + (++_rowUid);
+  return `<div class="mkt-row">
+    <button class="mkt-row-head" onclick="toggleRow(this)">
+      <span class="mkt-row-pct" style="color:var(--pitch)">${hB.rate}%</span>
+      <span class="mkt-row-label">${title}${infoIcon(infoKey)}</span>
+      <span class="mkt-row-pct" style="color:var(--pitch2)">${aB.rate}%</span>
+    </button>
+    <div class="mkt-row-bars">
+      <i style="flex:${(hB.rate / max).toFixed(3)};background:var(--pitch)"></i>
+      <i style="flex:${(aB.rate / max).toFixed(3)};background:var(--line)"></i>
     </div>
-    <div class="verdict" style="margin-top:14px"><span class="verdict-text">${lean}</span></div>
-    ${note ? `<div class="lead-note">${note}</div>` : ''}
-    ${gamesToggle(tables)}</div>`;
+    <div class="mkt-row-detail" id="${id}" style="display:none">
+      <div class="mkt-row-reason">${reasoning}</div>
+      ${detail}
+    </div>
+  </div>`;
 }
 
 /* ============================================================
@@ -1232,7 +1265,7 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
         teamCard(`${fx.away} scores in first half`, 'fh1', aG, m => m.htGf > 0, 'A quick start looks likely.', 'Slow starters lately.', 'scored', 'blank', fx.away, tag),
         combinedCard('BTTS In First Half', 'fhbtts', hG, aG, m => m.htGf > 0 && m.htGa > 0, 'Both sides have been finding the net early.', 'A quiet first half looks more likely.', fx.home, fx.away, 'both scored by HT', tag),
       ];
-      firstHalf = htCards.join('');
+      firstHalf = mktGroup(htCards.join(''));
     }
 
     /* ---- SECOND HALF & COMBINED MARKETS ---- */
@@ -1300,7 +1333,7 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
         <div class="form-team"><span class="label">${fx.away} form</span>${badges(away)}</div>
       </div>
       ${badgesHtml}
-      <div class="section-h">Result</div>${whoWins}
+      <div class="section-h">Result</div>${mktGroup(whoWins)}
       ${h2hCard ? `<div class="section-h">Head to head</div>${h2hCard}` : ''}
 
       <div class="insight-tabs" id="matchTabs">
@@ -1310,14 +1343,14 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
         <button class="insight-tab" data-pane="match-pane-form">Team Form</button>
       </div>
       <div class="insight-pane" id="match-pane-result">
-        <div class="section-h">Alternative result markets</div>${altResults.join('')}
+        <div class="section-h">Alternative result markets</div>${mktGroup(altResults.join(''))}
       </div>
       <div class="insight-pane" id="match-pane-goals" style="display:none">
-        <div class="section-h">Goals</div>${goals.join('')}
+        <div class="section-h">Goals</div>${mktGroup(goals.join(''))}
       </div>
       <div class="insight-pane" id="match-pane-halves" style="display:none">
         ${firstHalf ? `<div class="section-h">First half</div>${firstHalf}` : ''}
-        <div class="section-h">Second half &amp; combined markets</div>${secondHalf.join('')}
+        <div class="section-h">Second half &amp; combined markets</div>${mktGroup(secondHalf.join(''))}
       </div>
       <div class="insight-pane" id="match-pane-form" style="display:none">
         ${comparisonCard(`${fx.home} v ${fx.away}`, fx.home, fx.away, [
@@ -1325,7 +1358,7 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
           { label: 'Scored', h: hScore, a: aScore, test: scoreTest },
           { label: 'Clean sheet', h: hClean, a: aClean, test: cleanTest },
         ], home, away)}
-        <div class="section-h">Each team</div>${angleHtml}${da.join('')}
+        <div class="section-h">Each team</div>${angleHtml}${mktGroup(da.join(''))}
       </div>`;
     document.getElementById('matchTabs').querySelectorAll('.insight-tab').forEach(btn => {
       btn.onclick = () => {
