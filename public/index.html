@@ -345,7 +345,7 @@
   </div>
 
   <div class="view" id="view-method" style="display:none">
-    <button class="method-back" id="methodBack">← Back</button>
+    <button class="method-back" data-back>← Back</button>
     <div class="picker-label">Methodology</div>
     <section class="dash">
       <h3>How HitRate actually works</h3>
@@ -408,11 +408,141 @@
     </section>
   </div>
 
+  <div class="view" id="view-privacy" style="display:none">
+    <button class="method-back" data-back>← Back</button>
+    <div class="picker-label">Privacy Policy</div>
+    <section class="dash">
+      <h3>Privacy Policy</h3>
+      <div class="sub">Last updated 28 August 2026.</div>
+
+      <div class="method-block">
+        <h4>Who we are</h4>
+        <p>HitRate is an independent project run by <b>Callum</b>, an individual based in England, not a registered company. For anything in this policy — questions, requests, or complaints — contact <b>callumalim2007@icloud.com</b>. That makes Callum the "data controller" for the purposes of UK data protection law: the person responsible for deciding what data is collected and why.</p>
+      </div>
+
+      <div class="method-block">
+        <h4>What we collect</h4>
+        <ul class="method-list">
+          <li><b>Account details</b> — the email address and username you sign up with. Your password is never seen or stored by us directly; it's hashed and managed entirely by our authentication provider, Supabase.</li>
+          <li><b>Bet log data</b> — if you use the tracking feature: the fixture, market, and selection you logged, any odds or stake you optionally entered, and HitRate's own read (percentage) at the time you logged it.</li>
+          <li><b>Account timestamps</b> — when your account was created, and when bets were logged or settled.</li>
+          <li><b>Session data</b> — a login session token, stored in your browser by Supabase, so you stay signed in. This is not used for tracking or advertising.</li>
+        </ul>
+        <p>We do not collect payment details, real names (beyond an optional username), or any data from football-data.org that relates to you personally — that API is used only for public match/league data, entirely one-way, and never sees your account information.</p>
+      </div>
+
+      <div class="method-block">
+        <h4>Why we collect it</h4>
+        <p>Everything above is collected for one reason: <b>to provide the account and bet-tracking features you sign up for</b>. This is the "performance of a contract" legal basis — we collect what's needed to run the feature you asked to use, nothing more.</p>
+      </div>
+
+      <div class="method-block">
+        <h4>Who it's shared with</h4>
+        <ul class="method-list">
+          <li><b>Supabase</b> — our authentication and database provider. They store your account and bet data on our behalf, acting as a data processor under our instructions, not as an independent controller.</li>
+          <li><b>Vercel</b> — our hosting provider, which serves the site and runs its backend functions.</li>
+        </ul>
+        <p>We do not sell, rent, or share your personal data with advertisers, and there is no third-party analytics or ad tracking on HitRate.</p>
+      </div>
+
+      <div class="method-block">
+        <h4>How long we keep it</h4>
+        <p>Your account and bet data is kept for as long as your account exists. If you delete your account (see Settings on the Account tab), your profile and all logged bets are permanently and immediately removed — this isn't a soft-delete or a grace period, it's a real deletion cascaded through the database.</p>
+      </div>
+
+      <div class="method-block">
+        <h4>Your rights</h4>
+        <p>Under UK GDPR, you have the right to: access the personal data we hold about you, correct it if it's wrong, request its deletion, request a copy in a portable format, and object to or restrict how it's processed. To exercise any of these, email <b>callumalim2007@icloud.com</b>. You also have the right to complain to the <b>Information Commissioner's Office (ico.org.uk)</b> if you think your data has been mishandled.</p>
+      </div>
+
+      <div class="method-block">
+        <h4>Cookies & local storage</h4>
+        <p>HitRate uses one piece of browser storage: a session token that keeps you signed in, set by Supabase. This is strictly necessary for the account feature to work at all, not used for tracking, and not shared with advertisers. There are no marketing or analytics cookies on this site.</p>
+      </div>
+
+      <div class="method-block">
+        <h4>Age restriction</h4>
+        <p>HitRate is not intended for anyone under 18. Its content is closely tied to sports betting, and accounts should not be created by minors.</p>
+      </div>
+
+      <div class="method-block">
+        <h4>Changes to this policy</h4>
+        <p>If this policy changes in a meaningful way, the "last updated" date at the top will change to reflect it. Continued use of the site after a change means you accept the updated policy.</p>
+      </div>
+    </section>
+  </div>
+
+  <div class="view" id="view-terms" style="display:none">
+    <button class="method-back" data-back>← Back</button>
+    <div class="picker-label">Terms of Service</div>
+    <section class="dash">
+      <h3>Terms of Service</h3>
+      <div class="sub">Last updated 28 August 2026.</div>
+
+      <div class="method-block">
+        <h4>What HitRate is</h4>
+        <p>HitRate is an informational football statistics and insight tool. It shows plain-English reads built from real match history, and lets signed-in users keep a personal, private log of picks they've made elsewhere. <b>HitRate does not accept bets, hold funds, or act as a bookmaker in any way.</b> Any "stake" or "odds" you optionally enter in your bet log is self-reported, for your own record-keeping only, and is never wagered or processed by us.</p>
+      </div>
+
+      <div class="method-block">
+        <h4>Not advice, not a guarantee</h4>
+        <p>Every read on HitRate is a descriptive summary of past results — it is <b>not a prediction, not financial advice, and not a guarantee of any outcome</b>. Past results do not determine future ones. Any decision you make using information from this site, including any bet placed elsewhere, is entirely your own responsibility.</p>
+      </div>
+
+      <div class="method-block">
+        <h4>Eligibility</h4>
+        <p>You must be 18 or older to create an account or use HitRate, in line with UK gambling-related content rules. By signing up, you're confirming you meet this requirement.</p>
+      </div>
+
+      <div class="method-block">
+        <h4>Your account</h4>
+        <p>You're responsible for keeping your login details secure and for anything that happens under your account. Provide accurate information when signing up, and let us know if you believe your account has been accessed without your permission.</p>
+      </div>
+
+      <div class="method-block">
+        <h4>Acceptable use</h4>
+        <p>Please don't: scrape or bulk-extract the site's data for resale or redistribution, attempt to bypass rate limits or security measures, reverse-engineer the reads to circumvent the methodology, or use the service in any way that disrupts it for other users.</p>
+      </div>
+
+      <div class="method-block">
+        <h4>Availability</h4>
+        <p>HitRate is provided <b>"as is"</b>, with no guaranteed uptime. It depends on a free-tier external data source, which carries its own limits (delayed data, rate limits, no live odds or player-level stats) — features may occasionally be limited, slow, or temporarily unavailable as a result. Features may be added, changed, or removed at any time.</p>
+      </div>
+
+      <div class="method-block">
+        <h4>Liability</h4>
+        <p>To the fullest extent permitted by law, HitRate and its operator are not liable for any losses — financial or otherwise — arising from use of the site, including any betting decisions made using information shown on it. Nothing in these terms limits liability that cannot legally be excluded, such as for fraud.</p>
+      </div>
+
+      <div class="method-block">
+        <h4>Ending your account</h4>
+        <p>You may delete your account at any time from Settings on the Account tab, which removes your data as described in the Privacy Policy. We may also suspend or terminate accounts that breach the acceptable use terms above.</p>
+      </div>
+
+      <div class="method-block">
+        <h4>Changes to these terms</h4>
+        <p>These terms may be updated occasionally; the "last updated" date above reflects the most recent change. Continuing to use HitRate after a change means you accept the updated terms.</p>
+      </div>
+
+      <div class="method-block">
+        <h4>Governing law</h4>
+        <p>These terms are governed by the laws of England and Wales.</p>
+      </div>
+
+      <div class="method-block">
+        <h4>Contact</h4>
+        <p>Questions about these terms: <b>callumalim2007@icloud.com</b>.</p>
+      </div>
+    </section>
+  </div>
+
   <footer>
     Reads are based on <b>the last 6 games</b> only — descriptive, not a prediction model.
     The odds tools teach how to compare; they don't promise winners. 18+ · Gamble responsibly · BeGambleAware.org
     <br><br>
-    <button class="footer-link" id="methodLink">Read our full methodology →</button>
+    <button class="footer-link" data-goto="method">Methodology</button> ·
+    <button class="footer-link" data-goto="privacy">Privacy Policy</button> ·
+    <button class="footer-link" data-goto="terms">Terms of Service</button>
   </footer>
 </div>
 
@@ -1451,11 +1581,12 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
 }
 
 // genuine views — only one is on screen at a time. Five are swapped by the bottom
-// nav; 'method' is a sixth, reached only via the footer link (read-once reference
-// content, not a core action, so it deliberately doesn't get its own nav slot).
+// nav; 'method'/'privacy'/'terms' are read-once reference pages, reached only via
+// footer links (not core actions, so they deliberately don't get their own nav slot).
 // Everything is already loaded client-side, so switching costs nothing.
-const VIEWS = ['home', 'angles', 'tables', 'record', 'account', 'method'];
-let lastNavView = 'home'; // where "back" from the methodology page should return to
+const VIEWS = ['home', 'angles', 'tables', 'record', 'account', 'method', 'privacy', 'terms'];
+const REFERENCE_VIEWS = ['method', 'privacy', 'terms'];
+let lastNavView = 'home'; // where "back" from a reference page should return to
 
 function showView(name) {
   VIEWS.forEach(v => {
@@ -1463,17 +1594,17 @@ function showView(name) {
     if (el) el.style.display = (v === name) ? 'block' : 'none';
   });
   document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.nav === name));
-  if (name !== 'method') lastNavView = name;
+  if (!REFERENCE_VIEWS.includes(name)) lastNavView = name;
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function initBottomNav() {
   document.getElementById('bottomNav').querySelectorAll('.nav-item')
     .forEach(btn => { btn.onclick = () => showView(btn.dataset.nav); });
-  const methodLink = document.getElementById('methodLink');
-  if (methodLink) methodLink.onclick = () => showView('method');
-  const methodBack = document.getElementById('methodBack');
-  if (methodBack) methodBack.onclick = () => showView(lastNavView);
+  document.querySelectorAll('.footer-link[data-goto]')
+    .forEach(btn => { btn.onclick = () => showView(btn.dataset.goto); });
+  document.querySelectorAll('.method-back[data-back]')
+    .forEach(btn => { btn.onclick = () => showView(lastNavView); });
 }
 
 
@@ -1619,6 +1750,40 @@ window.doSignIn = async function () {
 };
 
 window.doSignOut = async function () { await supa.auth.signOut(); };
+
+// two-step in-page confirmation (not a browser confirm() popup, to match the
+// site's own styling) — the button becomes a real "yes, delete everything"
+// only after the first tap, so a stray click can't nuke an account by accident.
+window.confirmDeleteAccount = function () {
+  const zone = document.getElementById('deleteZone');
+  if (!zone) return;
+  zone.innerHTML = `
+    <div class="sub" style="color:var(--bad)">This deletes your account and every logged bet immediately and permanently.</div>
+    <div class="acct-actions">
+      <button class="btn-ghost sm" style="color:var(--bad);border-color:var(--bad)" onclick="doDeleteAccount()">Yes, delete everything</button>
+      <button class="btn-ghost sm" onclick="renderAccount()">Cancel</button>
+    </div>`;
+};
+
+window.doDeleteAccount = async function () {
+  const zone = document.getElementById('deleteZone');
+  if (zone) zone.innerHTML = `<div class="sub">Deleting your account…</div>`;
+  try {
+    const { data } = await supa.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) throw new Error('No active session.');
+    const r = await fetch('/api/delete-account', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || 'Deletion failed.');
+    await supa.auth.signOut(); // clears the local session; the account is already gone server-side
+  } catch (e) {
+    if (zone) zone.innerHTML = `<div class="sub" style="color:var(--bad)">Could not delete your account: ${e.message}. Please try again or email callumalim2007@icloud.com.</div>
+      <button class="btn-ghost sm" onclick="renderAccount()">Back</button>`;
+  }
+};
 
 window.doChangeEmail = async function () {
   const email = document.getElementById('newEmail').value.trim();
@@ -1788,7 +1953,12 @@ async function renderAccount() {
       <input id="newEmail" type="email" placeholder="New email address">
       <button class="btn-ghost" onclick="doChangeEmail()">Change email</button>
     </div>
-    <div id="accountMsg" class="acct-msg"></div>`;
+    <div id="accountMsg" class="acct-msg"></div>
+    <div class="section-h" style="margin-top:22px">Danger zone</div>
+    <div class="sub">Deleting your account permanently removes your profile and every bet you've logged. This can't be undone.</div>
+    <div id="deleteZone">
+      <button class="btn-ghost sm" style="color:var(--bad);border-color:var(--bad)" onclick="confirmDeleteAccount()">Delete my account</button>
+    </div>`;
 }
 
 // The Supabase client is created in a module script, which browsers run AFTER
