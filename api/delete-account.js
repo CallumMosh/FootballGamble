@@ -50,7 +50,8 @@ export default async function handler(req, res) {
     });
     if (!delRes.ok) {
       const detail = await delRes.text().catch(() => '');
-      return res.status(500).json({ error: `Deletion failed on the server. ${detail}`.trim() });
+      console.error('delete-account: admin delete failed', delRes.status, detail);
+      return res.status(500).json({ error: 'Deletion failed on the server — please try again.' });
     }
 
     res.status(200).json({ deleted: true });
