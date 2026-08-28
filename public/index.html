@@ -105,6 +105,8 @@
   .pill.meh{background:rgba(255,201,77,.14);color:var(--meh)}
   .pill.bad{background:rgba(255,93,93,.14);color:var(--bad)}
   .verdict-text b{color:var(--text)}
+  .blurb{font-size:14px;color:var(--text);line-height:1.5;margin:2px 0 2px}
+  .market-detail{margin-top:12px}
   .working{font-size:12.5px;color:var(--muted);margin-top:12px;padding-top:11px;border-top:1px solid var(--line);line-height:1.55}
   .working .y{color:var(--good)}.working .n{color:var(--bad)}
   .compare{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
@@ -807,6 +809,32 @@ function gamesToggle(tablesHtml) {
 }
 
 /* ============================================================
+   MARKET CARD DETAIL TOGGLE — cards default to a compact summary
+   (name, %, bar, one short line) and open on tap to reveal the badge,
+   full explanation, the "own record / opponent factored" breakdown,
+   the odds tool, and the add-to-slip button. Same collapse pattern as
+   gamesToggle/toggleGames above, just one level up: the button's
+   nextElementSibling is the hidden detail block.
+   ============================================================ */
+window.toggleDetail = function (btn) {
+  const w = btn.nextElementSibling;
+  const open = w.style.display === 'block';
+  w.style.display = open ? 'none' : 'block';
+  btn.textContent = open ? '▾ more detail' : '▴ less detail';
+};
+function detailToggle(innerHtml) {
+  return `<button class="games-toggle" onclick="toggleDetail(this)">▾ more detail</button>
+    <div class="market-detail" style="display:none">${innerHtml}</div>`;
+}
+// the one-line summary shown before a card is expanded — reuses the same up/down
+// copy every card already passes in, so there's no new wording to maintain
+function shortBlurb(level, up, down) {
+  return level === 'good' ? up
+    : level === 'bad' ? down
+    : 'No clear edge either way — often where the bookie wins, so lean cautious.';
+}
+
+/* ============================================================
    SLIP BUILDER + RISK METER  — educational: shows how stacking
    selections multiplies the risk and shrinks your combined chance.
    ============================================================ */
@@ -1048,11 +1076,13 @@ function teamCard(name, infoKey, games, test, up, down, yesWord, noWord, teamNam
     <div class="market-top"><span class="market-name">${name}${infoIcon(infoKey)}</span>
       <span class="market-stat" style="color:${colour(v.level)}">${b.rate}%</span></div>
     <div class="bar"><div style="width:${b.rate}%;background:${colour(v.level)}"></div></div>
-    <div class="verdict"><span class="pill ${v.level}">${v.label}</span>
-      <span class="verdict-text">${v.text}</span></div>
-    <div class="working">${workingLine(b, yesWord, noWord)}</div>
-    ${oddsBox(b.rate)}
-    ${slipBtn(name, tag, b.rate, fx, marketKey)}
+    <div class="blurb">${shortBlurb(v.level, up, down)}</div>
+    ${detailToggle(`
+      <div class="verdict"><span class="pill ${v.level}">${v.label}</span>
+        <span class="verdict-text">${v.text}</span></div>
+      <div class="working">${workingLine(b, yesWord, noWord)}</div>
+      ${oddsBox(b.rate)}
+      ${slipBtn(name, tag, b.rate, fx, marketKey)}`)}
     ${gamesToggle(gamesTable(games, test, teamName))}</div>`;
 }
 // opponent-aware: blends the team's own record with the opponent's matching record,
@@ -1071,11 +1101,13 @@ function temperedCard(name, infoKey, games, test, oppFactor, oppText, up, down, 
     <div class="market-top"><span class="market-name">${name}${infoIcon(infoKey)}</span>
       <span class="market-stat" style="color:${colour(v.level)}">${tempered}%</span></div>
     <div class="bar"><div style="width:${tempered}%;background:${colour(v.level)}"></div></div>
-    <div class="verdict"><span class="pill ${v.level}">${v.label}</span>
-      <span class="verdict-text">${txt}</span></div>
-    <div class="working">${teamName} own record <b>${own.rate}%</b> · ${oppText} → tempered to <b>${tempered}%</b>.<br>${workingLine(own, yesWord, noWord)}</div>
-    ${oddsBox(tempered)}
-    ${slipBtn(name, tag, tempered, fx, marketKey)}
+    <div class="blurb">${shortBlurb(v.level, up, down)}</div>
+    ${detailToggle(`
+      <div class="verdict"><span class="pill ${v.level}">${v.label}</span>
+        <span class="verdict-text">${txt}</span></div>
+      <div class="working">${teamName} own record <b>${own.rate}%</b> · ${oppText} → tempered to <b>${tempered}%</b>.<br>${workingLine(own, yesWord, noWord)}</div>
+      ${oddsBox(tempered)}
+      ${slipBtn(name, tag, tempered, fx, marketKey)}`)}
     ${gamesToggle(gamesTable(games, test, teamName))}</div>`;
 }
 function combinedCard(name, infoKey, hGames, aGames, test, up, down, hName, aName, unit, fx, marketKey) {
@@ -1087,11 +1119,13 @@ function combinedCard(name, infoKey, hGames, aGames, test, up, down, hName, aNam
     <div class="market-top"><span class="market-name">${name}${infoIcon(infoKey)}</span>
       <span class="market-stat" style="color:${colour(v.level)}">${p.rate}%</span></div>
     <div class="bar"><div style="width:${p.rate}%;background:${colour(v.level)}"></div></div>
-    <div class="verdict"><span class="pill ${v.level}">${v.label}</span>
-      <span class="verdict-text">${v.text}</span></div>
-    <div class="working">Pooled from both: ${hName} <span class="y">${p.hH}</span>/${p.hN} · ${aName} <span class="y">${p.aH}</span>/${p.aN} ${unit}</div>
-    ${oddsBox(p.rate)}
-    ${slipBtn(name, tag, p.rate, fx, marketKey)}
+    <div class="blurb">${shortBlurb(v.level, up, down)}</div>
+    ${detailToggle(`
+      <div class="verdict"><span class="pill ${v.level}">${v.label}</span>
+        <span class="verdict-text">${v.text}</span></div>
+      <div class="working">Pooled from both: ${hName} <span class="y">${p.hH}</span>/${p.hN} · ${aName} <span class="y">${p.aH}</span>/${p.aN} ${unit}</div>
+      ${oddsBox(p.rate)}
+      ${slipBtn(name, tag, p.rate, fx, marketKey)}`)}
     ${gamesToggle(tables)}</div>`;
 }
 // side-by-side comparison rows — one bar per side, scaled against the larger of the
