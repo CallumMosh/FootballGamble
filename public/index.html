@@ -1815,12 +1815,80 @@ window.doSignUp = async function () {
   accountMsg('Account created — check your email to confirm the address before logging in.', 'good');
 };
 
+// ------------------------------------------------------------------------
+// Soft login lockout — client-side only. This is a UX layer, not real
+// security: anyone can bypass it by clearing localStorage or calling the
+// Supabase API directly. Real protection lives in the Supabase dashboard's
+// Auth rate limits (and optionally CAPTCHA) — see project notes. This just
+// stops a normal browser session from hammering the login form, and gives
+// honest, calm feedback instead of letting failed attempts pile up silently.
+// ------------------------------------------------------------------------
+const LOGIN_LOCK_KEY = 'hitrate_login_attempts';
+const LOGIN_MAX_ATTEMPTS = 5;
+const LOGIN_LOCK_MS = 60 * 1000; // 60s cooldown once the limit is hit
+let loginLockTimer = null;
+
+function getLoginAttempts() {
+  try { return JSON.parse(localStorage.getItem(LOGIN_LOCK_KEY) || '{}'); }
+  catch { return {}; }
+}
+function setLoginAttempts(data) {
+  try { localStorage.setItem(LOGIN_LOCK_KEY, JSON.stringify(data)); } catch {}
+}
+function loginLockRemaining(email) {
+  const rec = getLoginAttempts()[email];
+  if (!rec || !rec.lockUntil) return 0;
+  return Math.max(0, rec.lockUntil - Date.now());
+}
+function recordLoginFailure(email) {
+  const data = getLoginAttempts();
+  const rec = data[email] || { count: 0, lockUntil: 0 };
+  rec.count += 1;
+  if (rec.count >= LOGIN_MAX_ATTEMPTS) { rec.lockUntil = Date.now() + LOGIN_LOCK_MS; rec.count = 0; }
+  data[email] = rec;
+  setLoginAttempts(data);
+}
+function clearLoginAttempts(email) {
+  const data = getLoginAttempts();
+  delete data[email];
+  setLoginAttempts(data);
+}
+function startLoginLockCountdown(email) {
+  if (loginLockTimer) clearInterval(loginLockTimer);
+  const tick = () => {
+    const left = loginLockRemaining(email);
+    if (left <= 0) {
+      clearInterval(loginLockTimer); loginLockTimer = null;
+      accountMsg('You can try logging in again now.', 'good');
+      return;
+    }
+    accountMsg(`Too many failed attempts — try again in ${Math.ceil(left / 1000)}s.`, 'bad');
+  };
+  tick();
+  loginLockTimer = setInterval(tick, 1000);
+}
+// checks as soon as the email field is filled in, so a returning locked-out
+// user sees the countdown immediately rather than only after another attempt
+window.checkLoginLockUI = function (email) {
+  email = (email || '').trim().toLowerCase();
+  if (email && loginLockRemaining(email) > 0) startLoginLockCountdown(email);
+};
+
 window.doSignIn = async function () {
-  const email = document.getElementById('acctEmail').value.trim();
+  const email = document.getElementById('acctEmail').value.trim().toLowerCase();
   const pw = document.getElementById('acctPw').value;
+  const remaining = loginLockRemaining(email);
+  if (remaining > 0) { startLoginLockCountdown(email); return; }
   accountMsg('Signing in…');
   const { error } = await supa.auth.signInWithPassword({ email, password: pw });
-  if (error) accountMsg(error.message, 'bad');
+  if (error) {
+    recordLoginFailure(email);
+    const nowRemaining = loginLockRemaining(email);
+    if (nowRemaining > 0) startLoginLockCountdown(email);
+    else accountMsg(error.message, 'bad');
+    return;
+  }
+  clearLoginAttempts(email);
 };
 
 window.doSignOut = async function () { await supa.auth.signOut(); };
@@ -1957,7 +2025,8 @@ async function renderAccount() {
       </div>
       <div class="acct-form">
         ${isSignup ? '<input id="acctUsername" type="text" placeholder="Username" autocomplete="nickname">' : ''}
-        <input id="acctEmail" type="email" placeholder="Email" autocomplete="email">
+        <input id="acctEmail" type="email" placeholder="Email" autocomplete="email"
+          ${!isSignup ? 'onblur="checkLoginLockUI(this.value)"' : ''}>
         <input id="acctPw" type="password" placeholder="${isSignup ? 'Password' : 'Password'}"
           autocomplete="${isSignup ? 'new-password' : 'current-password'}" oninput="updatePwChecklist(this.value)">
         ${isSignup ? `<div class="pw-checklist" id="pwChecklist">
