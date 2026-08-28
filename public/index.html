@@ -1273,14 +1273,7 @@ function renderFixtureGroups(filterLeague) {
 }
 
 // per-session caches — browsing fixtures shouldn't re-fetch the same teams/tables
-const teamCache = {};
 const standingsCache = {};
-async function getTeam(id) {
-  if (teamCache[id]) return teamCache[id];
-  const r = await fetchJson(`/api/team?id=${id}`);
-  teamCache[id] = r;
-  return r;
-}
 async function getStandings(cid) {
   if (standingsCache[cid]) return standingsCache[cid];
   try {
@@ -1291,20 +1284,16 @@ async function getStandings(cid) {
 }
 
 // recent form for a fixture, pulled from the competition feed (works for national
-// teams the free tier won't serve per-team). Falls back to per-team if no competition.
+// teams the free tier won't serve per-team). Every tracked fixture always carries
+// a competitionId (set in fixtures.js for every league we cover), so this always
+// goes through compteams.js — there's no per-team fallback endpoint anymore.
 const formCache = {};
 async function getForm(fx) {
   const k = `${fx.competitionId}:${fx.homeId}:${fx.awayId}`;
   if (formCache[k]) return formCache[k];
-  let out;
-  if (fx.competitionId) {
-    const r = await fetchJson(`/api/compteams?competition=${fx.competitionId}&home=${fx.homeId}&away=${fx.awayId}`);
-    out = { home: r.home || [], away: r.away || [],
-             homeSpansPriorSeason: !!r.homeSpansPriorSeason, awaySpansPriorSeason: !!r.awaySpansPriorSeason };
-  } else {
-    const [h, a] = await Promise.all([getTeam(fx.homeId), getTeam(fx.awayId)]);
-    out = { home: h.results || [], away: a.results || [], homeSpansPriorSeason: false, awaySpansPriorSeason: false };
-  }
+  const r = await fetchJson(`/api/compteams?competition=${fx.competitionId}&home=${fx.homeId}&away=${fx.awayId}`);
+  const out = { home: r.home || [], away: r.away || [],
+           homeSpansPriorSeason: !!r.homeSpansPriorSeason, awaySpansPriorSeason: !!r.awaySpansPriorSeason };
   formCache[k] = out;
   return out;
 }
