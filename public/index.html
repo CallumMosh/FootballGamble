@@ -304,6 +304,22 @@
   @keyframes loaderShadow{0%{transform:scaleX(1);opacity:.45}100%{transform:scaleX(.5);opacity:.15}}
   .loader-label{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1px;
     text-transform:uppercase;color:var(--muted)}
+  .age-gate-overlay{position:fixed;inset:0;z-index:500;background:rgba(4,10,7,.9);
+    backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:20px}
+  .age-gate-card{background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    padding:28px 24px;max-width:340px;width:100%;text-align:center}
+  .age-gate-title{font-family:'Montserrat',sans-serif;font-weight:700;text-transform:uppercase;
+    font-size:17px;letter-spacing:.5px;margin-bottom:10px;color:var(--text)}
+  .age-gate-text{font-size:13.5px;color:var(--muted);line-height:1.6;margin-bottom:20px}
+  .age-gate-label{display:block;font-family:'Space Mono',monospace;font-size:11px;
+    letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;text-align:left}
+  .age-gate-input{width:100%;box-sizing:border-box;background:var(--panel-2);border:1px solid var(--line);
+    border-radius:10px;padding:11px 13px;color:var(--text);font-family:'Archivo',sans-serif;
+    font-size:14px;margin-bottom:4px;color-scheme:dark}
+  .age-gate-input:focus{outline:none;border-color:var(--pitch)}
+  .age-gate-msg{min-height:18px;font-size:12.5px;margin:8px 0 6px;color:var(--bad)}
+  .age-gate-card .btn-primary{width:100%;margin-top:12px}
+  .age-gate-note{font-size:11px;color:var(--muted);margin-top:14px;line-height:1.5}
   .method-back{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:6px;
     font-family:'Space Mono',monospace;font-size:11.5px;letter-spacing:1px;text-transform:uppercase;
     color:var(--muted);margin-bottom:18px}
@@ -323,6 +339,30 @@
 </style>
 </head>
 <body>
+<div class="age-gate-overlay" id="ageGate">
+  <div class="age-gate-card">
+    <div class="age-gate-title">Age check</div>
+    <p class="age-gate-text">HitRate's content is closely tied to sports betting. You need to be 18 or older to use this site.</p>
+    <label class="age-gate-label" for="dobInput">Date of birth</label>
+    <input type="date" id="dobInput" class="age-gate-input">
+    <div id="ageGateMsg" class="age-gate-msg"></div>
+    <button class="btn-primary" onclick="checkAgeGate()">Continue</button>
+    <div class="age-gate-note">We don't store your date of birth anywhere — it's only used in your browser to check you're old enough, then forgotten.</div>
+  </div>
+</div>
+<script>
+// runs immediately, before the rest of the page — so a returning visitor who's
+// already confirmed their age never sees a flash of the gate before it hides.
+// A first-time visitor sees the gate by default (it's visible in the CSS/HTML
+// above with no JS needed to show it), which is what actually blocks access.
+(function () {
+  try {
+    if (localStorage.getItem('hitrate_age_verified') === '1') {
+      document.getElementById('ageGate').style.display = 'none';
+    }
+  } catch (e) {}
+})();
+</script>
 <div class="app">
   <header>
     <div class="brand-row">
@@ -480,7 +520,7 @@
 
       <div class="method-block">
         <h4>Age restriction</h4>
-        <p>HitRate is not intended for anyone under 18. Its content is closely tied to sports betting, and accounts should not be created by minors.</p>
+        <p>HitRate is not intended for anyone under 18. When you first visit, you'll be asked to confirm your date of birth. This is checked entirely in your browser — <b>your date of birth is never sent to us, stored, or logged anywhere</b>; only a simple yes/no result is kept locally on your device, so you're not asked again on your next visit.</p>
       </div>
 
       <div class="method-block">
@@ -592,6 +632,33 @@ if (window.initAuth) window.initAuth();
    ============================================================ */
 const WINDOW = 6;                 // one sample size, used everywhere
 const pct = (n, t) => t ? Math.round((n / t) * 100) : 0;
+
+// ------------------------------------------------------------------------
+// Age gate — self-declared date of birth, checked entirely client-side. This
+// is a self-declaration measure, the standard, proportionate approach for a
+// content/tracking site like this (as opposed to a licensed gambling
+// operator, which is legally required to run robust ID-based verification —
+// a different category of business to HitRate). The actual date of birth is
+// never sent anywhere or stored; only a plain pass/fail flag is kept, so a
+// returning visitor isn't asked again every time.
+// ------------------------------------------------------------------------
+window.checkAgeGate = function () {
+  const input = document.getElementById('dobInput');
+  const msg = document.getElementById('ageGateMsg');
+  const val = input.value;
+  if (!val) { msg.textContent = 'Enter your date of birth to continue.'; return; }
+  const dob = new Date(val + 'T00:00:00');
+  if (isNaN(dob.getTime()) || dob > new Date()) { msg.textContent = 'Enter a valid date of birth.'; return; }
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const hadBirthdayThisYear = (today.getMonth() > dob.getMonth())
+    || (today.getMonth() === dob.getMonth() && today.getDate() >= dob.getDate());
+  if (!hadBirthdayThisYear) age--;
+  input.value = ''; // done with the actual date the moment we've used it — never stored or sent anywhere
+  if (age < 18) { msg.textContent = "You must be 18 or older to use HitRate."; return; }
+  try { localStorage.setItem('hitrate_age_verified', '1'); } catch (e) {}
+  document.getElementById('ageGate').style.display = 'none';
+};
 
 // UK kick-off time — Europe/London handles BST/GMT automatically, no manual offset needed
 // day and time as separate pieces, for the stacked hero layout
