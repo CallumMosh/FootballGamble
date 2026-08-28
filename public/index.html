@@ -1874,21 +1874,34 @@ window.checkLoginLockUI = function (email) {
   if (email && loginLockRemaining(email) > 0) startLoginLockCountdown(email);
 };
 
+let signingIn = false; // guards against a rapid double-click firing overlapping
+                        // requests before the first one has resolved — without
+                        // this, a fast enough click-spam could slip a few extra
+                        // attempts past the counter below before it catches up
 window.doSignIn = async function () {
+  if (signingIn) return;
   const email = document.getElementById('acctEmail').value.trim().toLowerCase();
   const pw = document.getElementById('acctPw').value;
   const remaining = loginLockRemaining(email);
   if (remaining > 0) { startLoginLockCountdown(email); return; }
+  signingIn = true;
+  const btn = document.getElementById('loginBtn');
+  if (btn) btn.disabled = true;
   accountMsg('Signing in…');
-  const { error } = await supa.auth.signInWithPassword({ email, password: pw });
-  if (error) {
-    recordLoginFailure(email);
-    const nowRemaining = loginLockRemaining(email);
-    if (nowRemaining > 0) startLoginLockCountdown(email);
-    else accountMsg(error.message, 'bad');
-    return;
+  try {
+    const { error } = await supa.auth.signInWithPassword({ email, password: pw });
+    if (error) {
+      recordLoginFailure(email);
+      const nowRemaining = loginLockRemaining(email);
+      if (nowRemaining > 0) startLoginLockCountdown(email);
+      else accountMsg(error.message, 'bad');
+      return;
+    }
+    clearLoginAttempts(email);
+  } finally {
+    signingIn = false;
+    if (btn) btn.disabled = false;
   }
-  clearLoginAttempts(email);
 };
 
 window.doSignOut = async function () { await supa.auth.signOut(); };
@@ -2038,7 +2051,7 @@ async function renderAccount() {
         <div class="acct-actions">
           ${isSignup
             ? '<button class="btn-primary" onclick="doSignUp()">Create account</button>'
-            : '<button class="btn-primary" onclick="doSignIn()">Log in</button>'}
+            : '<button class="btn-primary" id="loginBtn" onclick="doSignIn()">Log in</button>'}
         </div>
         ${!isSignup ? '<button class="btn-link" onclick="doReset()">Forgot password</button>' : ''}
       </div>
