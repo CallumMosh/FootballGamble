@@ -82,10 +82,18 @@ export default async function handler(req, res) {
   const key = process.env.FOOTBALL_DATA_KEY;
   if (!key) return res.status(500).json({ error: 'No API key set.' });
 
-  // temporary diagnostic mode — visit /api/insights?debug=1 to see exactly what each
-  // competition's season data looks like and whether inSeason() accepted or rejected
-  // it, without needing to expose the API key or touch the real cached response
-  if (req.query.debug === '1') {
+  // diagnostic mode — visit /api/insights?debug=1&key=YOUR_DEBUG_KEY to see exactly
+  // what each competition's season data looks like and whether inSeason() accepted
+  // or rejected it, without needing to expose the football-data key or touch the
+  // real cached response. Gated behind a separate secret (DEBUG_KEY, set in the
+  // Vercel dashboard) so a stranger who finds this URL can't trigger it — each call
+  // makes up to 10 sequential requests to football-data.org, which would otherwise
+  // let anyone burn through the whole site's shared 10-req/min budget just by
+  // hitting this one endpoint repeatedly.
+  // Wrong or missing key just falls through to the normal response below, rather
+  // than returning a distinct "wrong key" error — so there's nothing that confirms
+  // to an outsider that this mode even exists.
+  if (req.query.debug === '1' && process.env.DEBUG_KEY && req.query.key === process.env.DEBUG_KEY) {
     const report = [];
     for (const [id, name] of PRIORITY) {
       if (report.length > 0) await new Promise(s => setTimeout(s, REQUEST_GAP_MS));
