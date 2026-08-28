@@ -296,8 +296,7 @@
   .pw-checklist span.met::before{content:'●'}
   .loader{display:flex;flex-direction:column;align-items:center;gap:10px;padding:30px 0}
   .loader-stage{position:relative;width:26px;height:36px}
-  .loader-ball{position:absolute;left:2px;top:0;width:22px;height:22px;border-radius:50%;
-    background:radial-gradient(circle at 34% 28%, #fff, var(--pitch) 62%);
+  .loader-ball{position:absolute;left:2px;top:0;width:22px;height:22px;display:block;
     animation:loaderBounce .58s cubic-bezier(.5,0,.5,1) infinite alternate}
   .loader-shadow{position:absolute;left:2px;bottom:0;width:22px;height:5px;border-radius:50%;
     background:rgba(0,0,0,.4);animation:loaderShadow .58s cubic-bezier(.5,0,.5,1) infinite alternate}
@@ -354,7 +353,7 @@
   <div class="view" id="view-account" style="display:none">
     <div class="picker-label">My account</div>
     <section class="dash" id="accountBody">
-      <div class="loader"><div class="loader-stage"><div class="loader-ball"></div><div class="loader-shadow"></div></div><div class="loader-label">Loading account…</div></div>
+      <div class="loader"><div class="loader-stage"><svg class="loader-ball" viewBox="0 0 100 100" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" fill="rgba(255,255,255,.55)" d="M50,2 A48,48 0 1,0 50,98 A48,48 0 1,0 50,2 Z M50,5 L30,16 L28,34 L44,45 L62,34 L60,15 Z M66,10 L92,22 L94,42 L76,52 L60,40 L62,20 Z M6,42 L24,30 L42,40 L44,60 L26,72 L8,62 Z M78,50 L96,46 L100,66 L90,84 L72,78 L68,60 Z M30,64 L48,58 L66,66 L68,86 L50,96 L32,88 Z M18,18 L28,14 L24,26 Z"/></svg><div class="loader-shadow"></div></div><div class="loader-label">Loading account…</div></div>
     </section>
   </div>
 
@@ -1088,12 +1087,25 @@ const fixturesEl = document.getElementById('fixtures');
 const resultsEl  = document.getElementById('results');
 const noteEl     = document.getElementById('note');
 
-// the site's one loading indicator — a bouncing ball with a squash/stretch and
-// a shadow, used everywhere something is fetching. Kept as a small reusable
-// snippet rather than one-off spinners per section, so it stays consistent.
+// the site's one loading indicator — a bouncing football silhouette (traced
+// from the reference icon, translucent fill instead of flat grey so it sits
+// naturally on the dark panel background) with a squash/stretch and a shadow,
+// used everywhere something is fetching. FOOTBALL_SVG is shared so the markup
+// stays identical between the JS-built version and the static page markup.
+const FOOTBALL_SVG = `<svg class="loader-ball" viewBox="0 0 100 100" aria-hidden="true">
+  <path fill-rule="evenodd" clip-rule="evenodd" fill="rgba(255,255,255,.55)" d="
+    M50,2 A48,48 0 1,0 50,98 A48,48 0 1,0 50,2 Z
+    M50,5 L30,16 L28,34 L44,45 L62,34 L60,15 Z
+    M66,10 L92,22 L94,42 L76,52 L60,40 L62,20 Z
+    M6,42 L24,30 L42,40 L44,60 L26,72 L8,62 Z
+    M78,50 L96,46 L100,66 L90,84 L72,78 L68,60 Z
+    M30,64 L48,58 L66,66 L68,86 L50,96 L32,88 Z
+    M18,18 L28,14 L24,26 Z"/>
+</svg>`;
+
 function loaderHTML(label) {
   return `<div class="loader">
-    <div class="loader-stage"><div class="loader-ball"></div><div class="loader-shadow"></div></div>
+    <div class="loader-stage">${FOOTBALL_SVG}<div class="loader-shadow"></div></div>
     <div class="loader-label">${label}</div>
   </div>`;
 }
