@@ -285,6 +285,25 @@
   .nav-item.active{color:var(--pitch)}
   footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);font-size:12px;
     color:var(--muted);line-height:1.6}footer b{color:var(--text)}
+  .footer-link{all:unset;box-sizing:border-box;cursor:pointer;color:var(--pitch);font-weight:600;
+    text-decoration:underline;text-underline-offset:2px}
+  .footer-link:hover{color:var(--text)}
+  .method-back{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+    font-family:'Space Mono',monospace;font-size:11.5px;letter-spacing:1px;text-transform:uppercase;
+    color:var(--muted);margin-bottom:18px}
+  .method-back:hover{color:var(--pitch)}
+  .method-block{margin-bottom:22px}
+  .method-block h4{font-family:'Montserrat',sans-serif;font-weight:700;font-size:14.5px;
+    text-transform:uppercase;letter-spacing:.4px;color:var(--text);margin-bottom:8px}
+  .method-block p{font-size:13.5px;line-height:1.65;color:var(--muted);margin-bottom:10px}
+  .method-block p:last-child{margin-bottom:0}
+  .method-block p b{color:var(--text);font-weight:600}
+  .method-list{margin:10px 0 0;padding-left:18px}
+  .method-list li{font-size:13.5px;line-height:1.65;color:var(--muted);margin-bottom:6px}
+  .method-list li b{color:var(--text);font-weight:600}
+  .method-tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+  .method-tag{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);
+    border:1px solid var(--line);border-radius:999px;padding:4px 11px}
 </style>
 </head>
 <body>
@@ -325,9 +344,75 @@
     <section class="dash" id="recordSection"></section>
   </div>
 
+  <div class="view" id="view-method" style="display:none">
+    <button class="method-back" id="methodBack">← Back</button>
+    <div class="picker-label">Methodology</div>
+    <section class="dash">
+      <h3>How HitRate actually works</h3>
+      <div class="sub">The reasoning behind every read, laid out plainly — because "trust us" isn't good enough.</div>
+
+      <div class="method-block">
+        <h4>The core idea</h4>
+        <p>HitRate doesn't predict the future. Every read is <b>descriptive</b> — a plain-English summary of what's actually happened in a team's recent games, not a forecast dressed up as one. If a team has scored in 5 of its last 6 games, that's a fact about the last 6 games. It's not a promise about the next one.</p>
+        <p>Every stat on the site lists the actual games behind it. Nothing is a black-box number — tap any read and you can check the working yourself.</p>
+      </div>
+
+      <div class="method-block">
+        <h4>The 6-game window</h4>
+        <p>Most reads are built from each team's <b>last 6 finished matches</b>. Six is a deliberate trade-off: long enough to smooth out a single freak result, short enough to actually reflect current form rather than form from four months ago. We don't stretch the window to manufacture a bigger sample — if a team hasn't played 6 games yet, the read simply isn't shown.</p>
+        <p>Early in a season, this means some teams won't have reads yet. That's intentional — a confident-looking stat built on 2 games would be more misleading than no stat at all.</p>
+      </div>
+
+      <div class="method-block">
+        <h4>One competition at a time</h4>
+        <p>We never compare stats across different competitions as if they're on the same scale. A team's goals-per-game in the Bundesliga isn't comparable to a team's goals-per-game in Ligue 1 — the opposition is different, the styles are different, the numbers just don't mean the same thing. Every read stays inside a single competition, even when that means a smaller sample.</p>
+      </div>
+
+      <div class="method-block">
+        <h4>Who Wins</h4>
+        <p>The head-to-favourite read blends three signals: each team's <b>recent form</b>, their <b>league position</b>, and the <b>head-to-head record</b> between them. We won't publish the exact weighting — not because it's complicated, but because it's the one part of the site simplest to copy wholesale, and it's tuned from real mistakes we've caught and fixed over time.</p>
+        <p>What we will say: recent form carries the most weight. League position only counts when there's a genuine, settled table behind it — not an early-season table or a group-stage standing that can't yet mean much. Head-to-head only counts once there's a meaningful number of past meetings to draw on; a single past result doesn't move the read.</p>
+        <p>If form and league position point in sharply opposite directions, we don't just let them cancel out quietly — the read is flagged as <b>genuinely hard to call</b> rather than presented with false confidence.</p>
+      </div>
+
+      <div class="method-block">
+        <h4>How other markets are built</h4>
+        <p>Beyond Who Wins, every market on the site is built one of three honest ways:</p>
+        <ul class="method-list">
+          <li><b>Pooled</b> — for markets like Over 2.5 Goals or BTTS, we combine both teams' actual game-by-game history and check the real hit rate across all of it. We never multiply two separate percentages together to fake a combined number (e.g. "win rate × clean sheet rate" for win-to-nil) — that produces a number that looks plausible but isn't real. We always check the actual joint outcome, game by game.</li>
+          <li><b>Opponent-tempered</b> — for markets like "to score" or "clean sheet," a team's own rate is blended with how their opponent tends to perform at the other end. A team that scores often against weak defences reads differently against a strong one.</li>
+          <li><b>Team-only</b> — where there's no sensible opponent factor to apply, we just show the team's own rate, plainly, with no adjustment pretending otherwise.</li>
+        </ul>
+      </div>
+
+      <div class="method-block">
+        <h4>Track Record</h4>
+        <p>This is the honesty check. We backtest each read type against real results the same teams already produced — including the misses, not just the hits. A market needs at least <b>7 finished games</b> within a single competition before it's eligible, so early in a season, or partway through a shorter tournament, this section can legitimately be empty. We don't lower that bar to make the page look more populated — six games means six games, no exceptions for a knockout competition that hasn't produced enough of them yet.</p>
+      </div>
+
+      <div class="method-block">
+        <h4>What we deliberately don't cover</h4>
+        <p>Some popular betting markets aren't on HitRate at all: first goalscorer, exact correct score, corners, cards, in-game/live markets. That's not an oversight — our data source doesn't provide reliable numbers for these on the tier we use, and we'd rather leave a market off entirely than fill it with a thin or unreliable read.</p>
+        <div class="method-tags">
+          <span class="method-tag">No live odds</span>
+          <span class="method-tag">No player-level stats</span>
+          <span class="method-tag">Delayed data</span>
+          <span class="method-tag">Free-tier source</span>
+        </div>
+      </div>
+
+      <div class="method-block">
+        <h4>One last thing</h4>
+        <p>Nothing here is a guarantee, a prediction, or financial advice. It's a plain-English summary of what's actually happened, shown honestly — wins, losses, and everything in between. If you use it to inform a bet, that's your call to make, not ours to promise.</p>
+      </div>
+    </section>
+  </div>
+
   <footer>
     Reads are based on <b>the last 6 games</b> only — descriptive, not a prediction model.
     The odds tools teach how to compare; they don't promise winners. 18+ · Gamble responsibly · BeGambleAware.org
+    <br><br>
+    <button class="footer-link" id="methodLink">Read our full methodology →</button>
   </footer>
 </div>
 
@@ -1365,21 +1450,30 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
     syncSlipButtons();
 }
 
-// four genuine views — only one is on screen at a time, swapped by the bottom nav.
+// genuine views — only one is on screen at a time. Five are swapped by the bottom
+// nav; 'method' is a sixth, reached only via the footer link (read-once reference
+// content, not a core action, so it deliberately doesn't get its own nav slot).
 // Everything is already loaded client-side, so switching costs nothing.
-const VIEWS = ['home', 'angles', 'tables', 'record', 'account'];
+const VIEWS = ['home', 'angles', 'tables', 'record', 'account', 'method'];
+let lastNavView = 'home'; // where "back" from the methodology page should return to
+
 function showView(name) {
   VIEWS.forEach(v => {
     const el = document.getElementById('view-' + v);
     if (el) el.style.display = (v === name) ? 'block' : 'none';
   });
   document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.nav === name));
+  if (name !== 'method') lastNavView = name;
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function initBottomNav() {
   document.getElementById('bottomNav').querySelectorAll('.nav-item')
     .forEach(btn => { btn.onclick = () => showView(btn.dataset.nav); });
+  const methodLink = document.getElementById('methodLink');
+  if (methodLink) methodLink.onclick = () => showView('method');
+  const methodBack = document.getElementById('methodBack');
+  if (methodBack) methodBack.onclick = () => showView(lastNavView);
 }
 
 
