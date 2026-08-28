@@ -288,6 +288,23 @@
   .footer-link{all:unset;box-sizing:border-box;cursor:pointer;color:var(--pitch);font-weight:600;
     text-decoration:underline;text-underline-offset:2px}
   .footer-link:hover{color:var(--text)}
+  .pw-checklist{display:flex;flex-wrap:wrap;gap:6px 12px;margin:-6px 0 4px;font-family:'Space Mono',monospace;
+    font-size:10.5px;color:var(--muted)}
+  .pw-checklist span{position:relative;padding-left:14px;transition:color .15s}
+  .pw-checklist span::before{content:'○';position:absolute;left:0;top:0}
+  .pw-checklist span.met{color:var(--good)}
+  .pw-checklist span.met::before{content:'●'}
+  .loader{display:flex;flex-direction:column;align-items:center;gap:10px;padding:30px 0}
+  .loader-stage{position:relative;width:26px;height:36px}
+  .loader-ball{position:absolute;left:2px;top:0;width:22px;height:22px;border-radius:50%;
+    background:radial-gradient(circle at 34% 28%, #fff, var(--pitch) 62%);
+    animation:loaderBounce .58s cubic-bezier(.5,0,.5,1) infinite alternate}
+  .loader-shadow{position:absolute;left:2px;bottom:0;width:22px;height:5px;border-radius:50%;
+    background:rgba(0,0,0,.4);animation:loaderShadow .58s cubic-bezier(.5,0,.5,1) infinite alternate}
+  @keyframes loaderBounce{0%{transform:translateY(13px) scale(1,.82)}100%{transform:translateY(-3px) scale(.94,1.08)}}
+  @keyframes loaderShadow{0%{transform:scaleX(1);opacity:.45}100%{transform:scaleX(.5);opacity:.15}}
+  .loader-label{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1px;
+    text-transform:uppercase;color:var(--muted)}
   .method-back{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:6px;
     font-family:'Space Mono',monospace;font-size:11.5px;letter-spacing:1px;text-transform:uppercase;
     color:var(--muted);margin-bottom:18px}
@@ -336,7 +353,9 @@
 
   <div class="view" id="view-account" style="display:none">
     <div class="picker-label">My account</div>
-    <section class="dash" id="accountBody"><div class="sub">Loading…</div></section>
+    <section class="dash" id="accountBody">
+      <div class="loader"><div class="loader-stage"><div class="loader-ball"></div><div class="loader-shadow"></div></div><div class="loader-label">Loading account…</div></div>
+    </section>
   </div>
 
   <div class="view" id="view-record" style="display:none">
@@ -788,7 +807,8 @@ function renderSlip() {
       <div class="slip-bar"><div style="width:${combined}%;background:${colour(cls)}"></div></div>
       <div class="slip-combined" style="color:${colour(cls)}">${combined}%</div></div>
     <div class="slip-note">${slipNote(slip.length, combined)}</div>
-    <button class="btn-primary sm slip-log" onclick="logSlip()">${currentUser ? 'Log these picks' : 'Log in to track these'}</button>`;
+    <button class="btn-primary sm slip-log" onclick="logSlip()">${currentUser ? 'Log these picks' : 'Log in to track these'}</button>
+    <div id="slipMsg" class="acct-msg"></div>`;
 }
 
 /* ============================================================
@@ -870,11 +890,11 @@ let activeTableCid = null;
 // each with its own heading — the bottom nav jumps straight to the relevant one
 function initInsightPanel() {
   document.getElementById('insight').innerHTML =
-    `<div class="insight-pane" id="pane-angles"><div class="sub">Loading…</div></div>`;
+    `<div class="insight-pane" id="pane-angles">${loaderHTML('Loading angles…')}</div>`;
   document.getElementById('tablesSection').innerHTML =
     `<div class="insight-pane" id="pane-tables"></div>`;
   document.getElementById('recordSection').innerHTML =
-    `<div class="insight-pane" id="pane-track"><div class="sub">Loading…</div></div>`;
+    `<div class="insight-pane" id="pane-track">${loaderHTML('Building record…')}</div>`;
   renderTablePills(); // pills render instantly, no fetch needed
 }
 
@@ -914,7 +934,7 @@ async function loadTable(cid, name) {
   activeTableCid = cid;
   document.querySelectorAll('.table-pill').forEach(b => b.classList.toggle('active', Number(b.dataset.cid) === cid));
   const body = document.getElementById('table-body');
-  body.innerHTML = `<p class="note">Loading ${name} table…</p>`;
+  body.innerHTML = loaderHTML(`Loading ${name} table…`);
   try {
     const d = await getStandings(cid);
     const groups = (d && d.groups) ? d.groups.filter(g => g.rows.length) : [];
@@ -1068,13 +1088,37 @@ const fixturesEl = document.getElementById('fixtures');
 const resultsEl  = document.getElementById('results');
 const noteEl     = document.getElementById('note');
 
-// fetch JSON with one automatic retry if we're briefly rate-limited (429)
+// the site's one loading indicator — a bouncing ball with a squash/stretch and
+// a shadow, used everywhere something is fetching. Kept as a small reusable
+// snippet rather than one-off spinners per section, so it stays consistent.
+function loaderHTML(label) {
+  return `<div class="loader">
+    <div class="loader-stage"><div class="loader-ball"></div><div class="loader-shadow"></div></div>
+    <div class="loader-label">${label}</div>
+  </div>`;
+}
+
+// fetch JSON with one automatic retry if we're briefly rate-limited (429).
+// Whatever technical detail comes back from the server (status codes, raw API
+// error text) is logged to the console for real debugging, but never shown to
+// the user — they get a short, plain-English message instead.
 async function fetchJson(url, tries = 2) {
   for (let i = 0; i < tries; i++) {
-    const r = await fetch(url);
-    const data = await r.json().catch(() => ({}));
+    let r, data;
+    try {
+      r = await fetch(url);
+      data = await r.json().catch(() => ({}));
+    } catch (netErr) {
+      console.error('Network error fetching', url, netErr);
+      throw new Error("Couldn't connect — check your internet and try again.");
+    }
     if (r.status === 429 && i < tries - 1) { await new Promise(s => setTimeout(s, 6000)); continue; }
-    if (!r.ok) throw new Error(data.error || (r.status === 429 ? 'Busy — try again in a moment.' : `Error ${r.status}`));
+    if (!r.ok) {
+      console.error('API error', url, r.status, data);
+      throw new Error(r.status === 429
+        ? 'Busy right now — please try again in a moment.'
+        : "Something went wrong loading this — please try again.");
+    }
     return data;
   }
 }
@@ -1142,6 +1186,8 @@ async function loadFeatured(fx) {
 let fixtureGroups = {}, fixtureLeagueOrder = [], activeLeagueFilter = 'All';
 
 async function loadFixtures() {
+  noteEl.innerHTML = loaderHTML('Loading fixtures…');
+  noteEl.style.display = '';
   try {
     const data = await fetchJson('/api/fixtures');
     if (!data.length) { noteEl.textContent = 'No upcoming fixtures in the next 10 days.'; return; }
@@ -1156,7 +1202,7 @@ async function loadFixtures() {
 
     renderLeagueFilter();
     renderFixtureGroups('All');
-  } catch (e) { noteEl.textContent = `Couldn't load fixtures: ${e.message}`; }
+  } catch (e) { console.error('loadFixtures failed:', e); noteEl.textContent = e.message; }
 }
 
 // short codes for the tile selector. football-data returns its own names (e.g.
@@ -1265,7 +1311,7 @@ async function getH2H(fx) {
 
 async function showFixture(fx) {
   resultsEl.classList.remove('hidden');
-  resultsEl.innerHTML = `<p class="note">Crunching recent form…</p>`;
+  resultsEl.innerHTML = loaderHTML('Crunching recent form…');
   try {
     const [form, standings, h2h] = await Promise.all([
       getForm(fx),
@@ -1292,7 +1338,8 @@ async function showFixture(fx) {
       : null;
     renderFixture(fx, home, away, positions, h2h, form.homeSpansPriorSeason, form.awaySpansPriorSeason);
   } catch (e) {
-    resultsEl.innerHTML = `<p class="note">Couldn't load that one: ${e.message}</p>`;
+    console.error('showFixture failed:', e);
+    resultsEl.innerHTML = `<p class="note">${e.message}</p>`;
   }
 }
 
@@ -1723,12 +1770,39 @@ function accountMsg(text, kind) {
   if (el) { el.textContent = text || ''; el.className = 'acct-msg' + (kind ? ' ' + kind : ''); }
 }
 
+// Enforced client-side at signup — Supabase Auth itself only enforces a
+// minimum length, not composition, so this is the actual gate. Returns a
+// short explanation of what's missing, or null if the password is fine.
+function passwordIssue(pw) {
+  if (!pw || pw.length < 8) return 'Password needs to be at least 8 characters.';
+  if (!/[A-Z]/.test(pw)) return 'Password needs at least one capital letter.';
+  if (!/[0-9]/.test(pw)) return 'Password needs at least one number.';
+  if (!/[^A-Za-z0-9]/.test(pw)) return 'Password needs at least one special character (e.g. ! ? # @).';
+  return null;
+}
+
+// live checklist under the password field on signup — ticks off each rule as
+// the person types, so they find out before hitting submit, not after
+window.updatePwChecklist = function (pw) {
+  const el = document.getElementById('pwChecklist');
+  if (!el) return;
+  const rules = {
+    len: pw.length >= 8,
+    upper: /[A-Z]/.test(pw),
+    num: /[0-9]/.test(pw),
+    special: /[^A-Za-z0-9]/.test(pw),
+  };
+  el.querySelectorAll('[data-rule]').forEach(s => s.classList.toggle('met', !!rules[s.dataset.rule]));
+};
+
 window.doSignUp = async function () {
   const email = document.getElementById('acctEmail').value.trim();
   const pw = document.getElementById('acctPw').value;
   const username = document.getElementById('acctUsername').value.trim();
   if (!username || username.length < 2) return accountMsg('Pick a username of at least 2 characters.', 'bad');
-  if (!email || pw.length < 8) return accountMsg('Use a valid email and a password of at least 8 characters.', 'bad');
+  if (!email) return accountMsg('Enter a valid email address.', 'bad');
+  const pwCheck = passwordIssue(pw);
+  if (pwCheck) return accountMsg(pwCheck, 'bad');
   accountMsg('Creating account…');
   const { data, error } = await supa.auth.signUp({ email, password: pw });
   if (error) return accountMsg(error.message, 'bad');
@@ -1780,7 +1854,8 @@ window.doDeleteAccount = async function () {
     if (!r.ok) throw new Error(j.error || 'Deletion failed.');
     await supa.auth.signOut(); // clears the local session; the account is already gone server-side
   } catch (e) {
-    if (zone) zone.innerHTML = `<div class="sub" style="color:var(--bad)">Could not delete your account: ${e.message}. Please try again or email callumalim2007@icloud.com.</div>
+    console.error('doDeleteAccount failed:', e);
+    if (zone) zone.innerHTML = `<div class="sub" style="color:var(--bad)">Something went wrong deleting your account. Please try again, or email callumalim2007@icloud.com.</div>
       <button class="btn-ghost sm" onclick="renderAccount()">Back</button>`;
   }
 };
@@ -1805,13 +1880,13 @@ window.settleBet = async function (id, status) {
   const { error } = await supa.from('bets')
     .update({ status, settled_at: new Date().toISOString() })
     .eq('id', id);
-  if (error) return accountMsg(error.message, 'bad');
+  if (error) { console.error('settleBet failed:', error); return accountMsg("Couldn't update that bet — please try again.", 'bad'); }
   renderAccount();
 };
 
 window.deleteBet = async function (id) {
   const { error } = await supa.from('bets').delete().eq('id', id);
-  if (error) return accountMsg(error.message, 'bad');
+  if (error) { console.error('deleteBet failed:', error); return accountMsg("Couldn't delete that bet — please try again.", 'bad'); }
   renderAccount();
 };
 
@@ -1834,7 +1909,12 @@ window.logSlip = async function () {
     market_key: sel.marketKey || null,
   }));
   const { error } = await supa.from('bets').insert(rows);
-  if (error) { alert('Could not save: ' + error.message); return; }
+  if (error) {
+    console.error('logSlip failed:', error);
+    const el = document.getElementById('slipMsg');
+    if (el) { el.textContent = "Couldn't save your picks — please try again."; el.classList.add('bad'); }
+    return;
+  }
   window.clearSlip();
   showView('account');
 };
@@ -1878,7 +1958,14 @@ async function renderAccount() {
       <div class="acct-form">
         ${isSignup ? '<input id="acctUsername" type="text" placeholder="Username" autocomplete="nickname">' : ''}
         <input id="acctEmail" type="email" placeholder="Email" autocomplete="email">
-        <input id="acctPw" type="password" placeholder="Password (8+ characters)" autocomplete="${isSignup ? 'new-password' : 'current-password'}">
+        <input id="acctPw" type="password" placeholder="${isSignup ? 'Password' : 'Password'}"
+          autocomplete="${isSignup ? 'new-password' : 'current-password'}" oninput="updatePwChecklist(this.value)">
+        ${isSignup ? `<div class="pw-checklist" id="pwChecklist">
+          <span data-rule="len">8+ characters</span>
+          <span data-rule="upper">1 capital letter</span>
+          <span data-rule="num">1 number</span>
+          <span data-rule="special">1 special character</span>
+        </div>` : ''}
         <div class="acct-actions">
           ${isSignup
             ? '<button class="btn-primary" onclick="doSignUp()">Create account</button>'
@@ -1890,7 +1977,7 @@ async function renderAccount() {
     return;
   }
 
-  el.innerHTML = `<div class="sub">Signed in as ${currentUser.email}</div><div class="sub">Loading your record…</div>`;
+  el.innerHTML = `<div class="sub">Signed in as ${currentUser.email}</div>${loaderHTML('Loading your record…')}`;
 
   const [profRes, recRes, mktRes, betsRes] = await Promise.all([
     supa.from('profiles').select('display_name').eq('id', currentUser.id).maybeSingle(),
