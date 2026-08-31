@@ -44,6 +44,7 @@ export default async function handler(req, res) {
         return {
           position: row.position,
           team: name,
+          id: row.team?.id || null, // lets the frontend link straight to a team page from a table row
           crest: row.team?.crest || '',
           played: row.playedGames || 0,
           won: row.won || 0,
