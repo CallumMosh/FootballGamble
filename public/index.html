@@ -344,6 +344,9 @@
   .footer-link{all:unset;box-sizing:border-box;cursor:pointer;color:var(--pitch);font-weight:600;
     text-decoration:underline;text-underline-offset:2px}
   .footer-link:hover{color:var(--text)}
+  .browse-link{all:unset;box-sizing:border-box;cursor:pointer;display:block;font-size:12.5px;
+    color:var(--pitch);text-decoration:underline;text-underline-offset:2px;margin-bottom:14px}
+  .browse-link:hover{color:var(--text)}
   .pw-checklist{display:flex;flex-wrap:wrap;gap:6px 12px;margin:-6px 0 4px;font-family:'Space Mono',monospace;
     font-size:10.5px;color:var(--muted)}
   .pw-checklist span{position:relative;padding-left:14px;transition:color .15s}
@@ -435,6 +438,7 @@
       <input type="search" id="teamSearch" class="team-search" placeholder="Search a team…" oninput="onTeamSearch(this.value)">
       <span class="team-search-icon">⌕</span>
     </div>
+    <button class="browse-link" onclick="showBrowse()">Can't find a team? Browse by league →</button>
     <div class="league-tiles" id="leagueFilter"></div>
     <div class="fixtures" id="fixtures"></div>
     <div class="note" id="note">Loading fixtures…</div>
@@ -466,6 +470,13 @@
   <div class="view" id="view-team" style="display:none">
     <button class="method-back" data-back>← Back</button>
     <div id="teamBody"></div>
+  </div>
+
+  <div class="view" id="view-browse" style="display:none">
+    <button class="method-back" data-back>← Back</button>
+    <div class="picker-label">Browse teams</div>
+    <div class="league-tiles" id="browseLeaguePicker"></div>
+    <div id="browseTeamList"><p class="note">Pick a league above to see its teams.</p></div>
   </div>
 
   <div class="view" id="view-method" style="display:none">
@@ -1060,7 +1071,8 @@ window.showTeam = async function (teamId, teamName, crest, competitionId) {
     ]);
     const games = formData.home || [];
     const allRows = (standings.groups || []).flatMap(g => g.rows || []);
-    const row = allRows.find(r => r.team === teamName)
+    const row = allRows.find(r => String(r.id) === teamId)
+      || allRows.find(r => r.team === teamName)
       || allRows.find(r => standings.positions[teamId] && r.position === standings.positions[teamId]);
 
     const tableHtml = row ? `
@@ -1604,6 +1616,59 @@ const leagueCode = name => {
   return hit ? hit[1] : name.slice(0, 3).toUpperCase();
 };
 
+/* ============================================================
+   BROWSE TEAMS BY LEAGUE — search and follow only cover teams with
+   a fixture in the next 10 days, since that's the only data loaded
+   on the site. This view fixes that gap: pick any tracked competition
+   and see its full team list from the league table (standings.js),
+   regardless of whether that team is playing soon.
+   ============================================================ */
+// mirrors LEAGUE_IDS in api/fixtures.js — kept in sync manually since this is
+// the full set of tracked competitions, not just ones with fixtures right now
+const ALL_COMPETITIONS = [
+  [2021, 'Premier League'], [2016, 'Championship'], [2001, 'Champions League'],
+  [2014, 'La Liga'], [2019, 'Serie A'], [2002, 'Bundesliga'], [2015, 'Ligue 1'],
+  [2003, 'Eredivisie'], [2017, 'Primeira Liga'], [2000, 'World Cup'], [2013, 'Brasileirão'],
+];
+let browseCompetition = null;
+window.showBrowse = function () {
+  showView('browse');
+  renderBrowseLeaguePicker();
+};
+function renderBrowseLeaguePicker() {
+  const el = document.getElementById('browseLeaguePicker');
+  el.innerHTML = ALL_COMPETITIONS.map(([id, name]) =>
+    `<button class="league-tile${browseCompetition === id ? ' active' : ''}" data-cid="${id}" data-name="${name}" title="${name}">${leagueCode(name)}</button>`).join('');
+  el.querySelectorAll('.league-tile').forEach(btn => {
+    btn.onclick = () => {
+      browseCompetition = Number(btn.dataset.cid);
+      renderBrowseLeaguePicker();
+      loadBrowseTeams(browseCompetition, btn.dataset.name);
+    };
+  });
+}
+async function loadBrowseTeams(cid, name) {
+  const el = document.getElementById('browseTeamList');
+  el.innerHTML = loaderHTML(`Loading ${name} teams…`);
+  try {
+    const standings = await getStandings(cid); // same cache used everywhere else
+    const rows = (standings.groups || []).flatMap(g => g.rows || []);
+    if (!rows.length) { el.innerHTML = `<p class="note">No team data available for ${name} right now.</p>`; return; }
+    rows.sort((a, b) => a.position - b.position);
+    el.innerHTML = `<div class="fixtures">` + rows.map(r => `
+      <button class="fixture-btn browse-team-btn" data-id="${r.id || ''}" data-name="${(r.team || '').replace(/"/g, '&quot;')}" data-crest="${r.crest || ''}" data-cid="${cid}">
+        <span class="fixture-teams">${r.crest ? `<img class="crest" src="${r.crest}" alt="" loading="lazy" onerror="this.remove()">` : ''}#${r.position} ${r.team}</span>
+        <span class="fixture-time">${r.points} pts</span>
+      </button>`).join('') + `</div>`;
+    el.querySelectorAll('.browse-team-btn').forEach(btn => {
+      btn.onclick = () => showTeam(btn.dataset.id, btn.dataset.name, btn.dataset.crest, btn.dataset.cid);
+    });
+  } catch (e) {
+    console.error('loadBrowseTeams failed:', e);
+    el.innerHTML = `<p class="note">${e.message}</p>`;
+  }
+}
+
 // one tile per league that actually has fixtures right now, plus "All" — tapping
 // filters the list below without needing to re-fetch anything, since we already
 // have every league's fixtures grouped client-side
@@ -2022,8 +2087,8 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
 // nav; 'method'/'privacy'/'terms' are read-once reference pages, reached only via
 // footer links (not core actions, so they deliberately don't get their own nav slot).
 // Everything is already loaded client-side, so switching costs nothing.
-const VIEWS = ['home', 'angles', 'tables', 'record', 'account', 'method', 'privacy', 'terms', 'team'];
-const REFERENCE_VIEWS = ['method', 'privacy', 'terms', 'team'];
+const VIEWS = ['home', 'angles', 'tables', 'record', 'account', 'method', 'privacy', 'terms', 'team', 'browse'];
+const REFERENCE_VIEWS = ['method', 'privacy', 'terms', 'team', 'browse'];
 let lastNavView = 'home'; // where "back" from a reference page should return to
 
 function showView(name) {
