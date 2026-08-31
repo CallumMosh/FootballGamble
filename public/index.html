@@ -4,6 +4,30 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>HitRate — Transparency through the noise</title>
+<meta name="description" content="Plain-English football reads that show their working — real percentages, real games behind every stat, honest losses shown alongside wins.">
+
+<!-- favicon -->
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="/favicon-16.png" type="image/png" sizes="16x16">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+<!-- link previews (iMessage, WhatsApp, Slack, Facebook, etc.) -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="HitRate">
+<meta property="og:title" content="HitRate — Transparency through the noise">
+<meta property="og:description" content="Plain-English football reads that show their working — real percentages, real games behind every stat, honest losses shown alongside wins.">
+<meta property="og:image" content="https://football-gamble.vercel.app/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://football-gamble.vercel.app">
+
+<!-- link previews (X/Twitter) -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="HitRate — Transparency through the noise">
+<meta name="twitter:description" content="Plain-English football reads that show their working — real percentages, real games behind every stat, honest losses shown alongside wins.">
+<meta name="twitter:image" content="https://football-gamble.vercel.app/og-image.png">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Archivo:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -78,6 +102,11 @@
   .kickoff{width:fit-content;font-family:'Space Mono',monospace;font-size:13px;color:#ffffff;
     margin-bottom:14px}
   .matchup .at{color:#ffffff}
+  .follow-star{all:unset;box-sizing:border-box;cursor:pointer;display:inline-block;font-size:.62em;
+    color:var(--muted);vertical-align:middle;margin:0 4px;line-height:1;transition:color .15s,transform .1s}
+  .follow-star:hover{transform:scale(1.15)}
+  .follow-star.on{color:var(--pitch)}
+  .following-btn{border-color:rgba(45,212,191,.35)}
   .disclaimer{font-size:13px;color:var(--muted);border-left:2px solid var(--line);
     padding-left:14px;margin:16px 0 4px;line-height:1.6}
   .cmp-card{background:var(--panel);border-radius:14px;padding:18px 20px;margin-bottom:10px}
@@ -182,6 +211,15 @@
   .league-tile:hover{border-color:var(--pitch);color:var(--text)}
   .league-tile.active{background:var(--pitch);border-color:var(--pitch);color:var(--bg)}
   .league-tile .n{font-size:9px;font-weight:400;opacity:.75}
+  .team-search-wrap{position:relative;margin-bottom:14px}
+  .team-search{all:unset;box-sizing:border-box;width:100%;background:var(--panel);border:1px solid var(--line);
+    border-radius:12px;padding:12px 16px 12px 38px;color:var(--text);font-family:'Archivo',sans-serif;
+    font-size:14px}
+  .team-search::placeholder{color:var(--muted)}
+  .team-search:focus{border-color:var(--pitch)}
+  .team-search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);
+    font-size:15px;pointer-events:none}
+  .team-search::-webkit-search-cancel-button{filter:invert(1);opacity:.6;cursor:pointer}
   .table-pills{display:flex;gap:8px;margin-bottom:18px;overflow-x:auto;padding-bottom:4px;
     scrollbar-width:none;-ms-overflow-style:none}
   .table-pills::-webkit-scrollbar{display:none}
@@ -375,7 +413,12 @@
 
   <div class="view" id="view-home">
     <section id="featured" style="display:none"></section>
+    <section id="followingSection" style="display:none"></section>
     <div class="picker-label">Upcoming fixtures</div>
+    <div class="team-search-wrap">
+      <input type="search" id="teamSearch" class="team-search" placeholder="Search a team…" oninput="onTeamSearch(this.value)">
+      <span class="team-search-icon">⌕</span>
+    </div>
     <div class="league-tiles" id="leagueFilter"></div>
     <div class="fixtures" id="fixtures"></div>
     <div class="note" id="note">Loading fixtures…</div>
@@ -832,6 +875,84 @@ function shortBlurb(level, up, down) {
   return level === 'good' ? up
     : level === 'bad' ? down
     : 'No clear edge either way — often where the bookie wins, so lean cautious.';
+}
+
+/* ============================================================
+   FOLLOW A TEAM — signed-in users only. followingIds holds team ids
+   as strings for easy Set lookups; the "Following" section on Home
+   is built by filtering the fixtures already loaded for the next 10
+   days, the same no-extra-fetch approach as search and the league
+   pills. Loaded from Supabase on sign-in so it syncs across devices.
+   ============================================================ */
+let followingIds = new Set();
+let allFixtures = [];
+
+function followStar(teamId, teamName, crest) {
+  if (!teamId) return '';
+  const on = followingIds.has(String(teamId));
+  return `<button class="follow-star${on ? ' on' : ''}" data-team-id="${teamId}" data-team-name="${teamName}"
+    data-crest="${crest || ''}" onclick="toggleFollow(this)" title="${on ? 'Unfollow' : 'Follow'} ${teamName}"
+    aria-label="${on ? 'Unfollow' : 'Follow'} ${teamName}">${on ? '★' : '☆'}</button>`;
+}
+function refreshFollowStars() {
+  document.querySelectorAll('.follow-star').forEach(btn => {
+    const on = followingIds.has(btn.dataset.teamId);
+    btn.textContent = on ? '★' : '☆';
+    btn.classList.toggle('on', on);
+    btn.title = (on ? 'Unfollow ' : 'Follow ') + btn.dataset.teamName;
+  });
+}
+window.toggleFollow = async function (btn) {
+  if (!currentUser) { showView('account'); return; } // not signed in — send them to log in first
+  const teamId = btn.dataset.teamId, teamName = btn.dataset.teamName, crest = btn.dataset.crest || null;
+  if (!teamId) return;
+  const wasFollowing = followingIds.has(teamId);
+  // optimistic — flip the UI immediately, roll back only if the write fails
+  if (wasFollowing) followingIds.delete(teamId); else followingIds.add(teamId);
+  refreshFollowStars();
+  renderFollowing();
+  if (wasFollowing) {
+    const { error } = await supa.from('follows').delete().eq('team_id', teamId);
+    if (error) { console.error('unfollow failed:', error); followingIds.add(teamId); refreshFollowStars(); renderFollowing(); }
+  } else {
+    const { error } = await supa.from('follows').insert({ team_id: teamId, team_name: teamName, crest });
+    if (error) { console.error('follow failed:', error); followingIds.delete(teamId); refreshFollowStars(); renderFollowing(); }
+  }
+};
+async function loadFollows() {
+  if (!currentUser) { followingIds = new Set(); renderFollowing(); return; }
+  const { data, error } = await supa.from('follows').select('team_id');
+  if (!error && data) followingIds = new Set(data.map(r => String(r.team_id)));
+  else if (error) console.error('loadFollows failed:', error);
+  refreshFollowStars();
+  renderFollowing();
+}
+// personalized strip on Home — every fixture in the next 10 days involving a
+// followed team, pulled from the fixtures already in memory (no extra fetch)
+function renderFollowing() {
+  const el = document.getElementById('followingSection');
+  if (!el) return;
+  if (!currentUser || followingIds.size === 0) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  const matches = allFixtures.filter(fx => followingIds.has(String(fx.homeId)) || followingIds.has(String(fx.awayId)));
+  el.style.display = 'block';
+  if (!matches.length) {
+    el.innerHTML = `<div class="picker-label">Your teams</div><p class="note">No upcoming fixtures for your followed teams in the next 10 days.</p>`;
+    return;
+  }
+  el.innerHTML = `<div class="picker-label">Your teams</div>` + matches.map((fx, i) => `
+    <button class="fixture-btn following-btn" data-i="${i}">
+      <span class="fixture-teams">${fx.crest ? `<img class="crest" src="${fx.crest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${fx.home}<span class="vs">v</span>${fx.awayCrest ? `<img class="crest" src="${fx.awayCrest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${fx.away}</span>
+      <span class="fixture-time">${ukTimeShort(fx.date)}</span>
+    </button>`).join('');
+  el.querySelectorAll('.following-btn').forEach(btn => {
+    const fx = matches[Number(btn.dataset.i)];
+    btn.onclick = () => {
+      document.querySelectorAll('.fixture-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      showFixture(fx);
+      document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+  });
 }
 
 /* ============================================================
@@ -1296,16 +1417,26 @@ async function loadFeatured(fx) {
   } catch (e) { el.style.display = 'none'; } // fails quietly — the fixture is still there in the normal list
 }
 
-let fixtureGroups = {}, fixtureLeagueOrder = [], activeLeagueFilter = 'All';
+let fixtureGroups = {}, fixtureLeagueOrder = [], activeLeagueFilter = 'All', teamSearchQuery = '';
+
+// team search — filters the fixtures already loaded for the next 10 days, same
+// "no re-fetch" approach as the league pills. Combines with whichever league
+// pill is active, rather than replacing it.
+window.onTeamSearch = function (val) {
+  teamSearchQuery = val.trim().toLowerCase();
+  renderFixtureGroups(activeLeagueFilter);
+};
 
 async function loadFixtures() {
   noteEl.innerHTML = loaderHTML('Loading fixtures…');
   noteEl.style.display = '';
   try {
     const data = await fetchJson('/api/fixtures');
+    allFixtures = data;
     if (!data.length) { noteEl.textContent = 'No upcoming fixtures in the next 10 days.'; return; }
     noteEl.style.display = 'none';
     loadFeatured(data[0]); // soonest fixture overall — data arrives sorted soonest-first
+    renderFollowing();
 
     // group by league — data arrives sorted soonest-first, so each group's first
     // entry is that league's earliest fixture, which we use to order the groups too
@@ -1352,13 +1483,21 @@ function renderLeagueFilter() {
 function renderFixtureGroups(filterLeague) {
   fixturesEl.innerHTML = '';
   const leagues = filterLeague === 'All' ? fixtureLeagueOrder : fixtureLeagueOrder.filter(l => l === filterLeague);
+  const q = teamSearchQuery;
+  let shown = 0;
   leagues.forEach(league => {
+    const matches = q
+      ? fixtureGroups[league].filter(fx => fx.home.toLowerCase().includes(q) || fx.away.toLowerCase().includes(q))
+      : fixtureGroups[league];
+    if (!matches.length) return;
+    shown += matches.length;
+
     const heading = document.createElement('div');
     heading.className = 'fixture-group-h';
     heading.textContent = league;
     fixturesEl.appendChild(heading);
 
-    fixtureGroups[league].forEach(fx => {
+    matches.forEach(fx => {
       const btn = document.createElement('button');
       btn.className = 'fixture-btn';
       btn.innerHTML = `<span class="fixture-teams">${fx.crest ? `<img class="crest" src="${fx.crest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${fx.home}<span class="vs">v</span>${fx.awayCrest ? `<img class="crest" src="${fx.awayCrest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${fx.away}</span>
@@ -1371,6 +1510,11 @@ function renderFixtureGroups(filterLeague) {
       fixturesEl.appendChild(btn);
     });
   });
+  if (!shown) {
+    fixturesEl.innerHTML = q
+      ? `<p class="note">No upcoming fixtures found for "${document.getElementById('teamSearch').value.trim()}" in the next 10 days — try a different spelling, or the team might just not be playing soon.</p>`
+      : `<p class="note">No fixtures in this league right now.</p>`;
+  }
 }
 
 // per-session caches — browsing fixtures shouldn't re-fetch the same teams/tables
@@ -1706,7 +1850,7 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
     const panesHtml = tabDefs.map((t, i) => `<div class="insight-pane" id="${t.id}"${i === 0 ? '' : ' style="display:none"'}>${t.html}</div>`).join('');
 
     resultsEl.innerHTML = `
-      <div class="matchup">${fx.home} <span class="at">vs</span> ${fx.away}</div>
+      <div class="matchup">${followStar(fx.homeId, fx.home, fx.crest)}${fx.home} <span class="at">vs</span> ${fx.away}${followStar(fx.awayId, fx.away, fx.awayCrest)}</div>
       ${fx.date ? `<div class="kickoff">Kick-off: ${ukTimeFull(fx.date)}</div>` : ''}
       <p class="disclaimer">${lookbackText} Every figure lists the games behind it —
         tap “show the games” to verify. Descriptive, not a prediction — then use the odds box to test for value.</p>
@@ -2245,11 +2389,13 @@ window.initAuth = function () {
     currentUser = newUser;
     renderAccount();
     renderSlip();
+    loadFollows();
     if (currentUser) checkAutoSettle(); // quietly grades any due bets, then refreshes if it changed anything
   });
   supa.auth.getSession().then(({ data }) => {
     currentUser = data.session?.user || null;
     renderAccount();
+    loadFollows();
     if (currentUser) checkAutoSettle();
   });
 };
