@@ -109,7 +109,18 @@
   .team-link{cursor:pointer;text-decoration:underline;text-decoration-color:transparent;
     text-underline-offset:3px;transition:text-decoration-color .15s}
   .team-link:hover{text-decoration-color:currentColor}
-  .following-btn{border-color:rgba(45,212,191,.35)}
+  .follow-chips{display:flex;gap:10px;margin-bottom:18px;overflow-x:auto;padding-bottom:4px;
+    scrollbar-width:none;-ms-overflow-style:none}
+  .follow-chips::-webkit-scrollbar{display:none}
+  .follow-chip{all:unset;box-sizing:border-box;cursor:pointer;position:relative;flex-shrink:0;
+    width:52px;height:52px;border-radius:50%;background:var(--panel-2);border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;overflow:hidden;transition:border-color .15s}
+  .follow-chip:hover{border-color:var(--pitch)}
+  .follow-chip .initial{font-family:'Montserrat',sans-serif;font-weight:700;font-size:18px;color:var(--muted)}
+  .follow-chip img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:9px;
+    box-sizing:border-box;background:var(--panel-2)}
+  .follow-chip .dot{position:absolute;bottom:1px;right:1px;width:12px;height:12px;border-radius:50%;
+    background:var(--pitch);border:2px solid var(--bg)}
   .disclaimer{font-size:13px;color:var(--muted);border-left:2px solid var(--line);
     padding-left:14px;margin:16px 0 4px;line-height:1.6}
   .cmp-card{background:var(--panel);border-radius:14px;padding:18px 20px;margin-bottom:10px}
@@ -948,39 +959,37 @@ function followErr(msg) {
   clearTimeout(el._t);
   el._t = setTimeout(() => { el.style.display = 'none'; }, 4000);
 }
+let followingTeams = []; // [{team_id, team_name, crest}] — full records, not just ids, so a
+                          // followed team with no fixture in the next 10 days still shows up
 async function loadFollows() {
-  if (!currentUser) { followingIds = new Set(); renderFollowing(); return; }
-  const { data, error } = await supa.from('follows').select('team_id');
-  if (!error && data) followingIds = new Set(data.map(r => String(r.team_id)));
+  if (!currentUser) { followingIds = new Set(); followingTeams = []; renderFollowing(); return; }
+  const { data, error } = await supa.from('follows').select('team_id, team_name, crest');
+  if (!error && data) { followingIds = new Set(data.map(r => String(r.team_id))); followingTeams = data; }
   else if (error) console.error('loadFollows failed:', error);
   refreshFollowStars();
   renderFollowing();
 }
-// personalized strip on Home — every fixture in the next 10 days involving a
-// followed team, pulled from the fixtures already in memory (no extra fetch)
+// personalized strip on Home — a compact row of crest chips, not a full list of
+// fixture cards, so it stays small regardless of how many teams are followed. A
+// teal dot marks a team with a fixture in the next 10 days; tapping any chip
+// opens that team's page, which shows the fixture (if any) plus everything else.
 function renderFollowing() {
   const el = document.getElementById('followingSection');
   if (!el) return;
-  if (!currentUser || followingIds.size === 0) { el.style.display = 'none'; el.innerHTML = ''; return; }
-  const matches = allFixtures.filter(fx => followingIds.has(String(fx.homeId)) || followingIds.has(String(fx.awayId)));
+  if (!currentUser || !followingTeams.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
   el.style.display = 'block';
-  if (!matches.length) {
-    el.innerHTML = `<div class="picker-label">Your teams</div><p class="note">No upcoming fixtures for your followed teams in the next 10 days.</p>`;
-    return;
-  }
-  el.innerHTML = `<div class="picker-label">Your teams</div>` + matches.map((fx, i) => `
-    <button class="fixture-btn following-btn" data-i="${i}">
-      <span class="fixture-teams">${fx.crest ? `<img class="crest" src="${fx.crest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${fx.home}<span class="vs">v</span>${fx.awayCrest ? `<img class="crest" src="${fx.awayCrest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${fx.away}</span>
-      <span class="fixture-time">${ukTimeShort(fx.date)}</span>
-    </button>`).join('');
-  el.querySelectorAll('.following-btn').forEach(btn => {
-    const fx = matches[Number(btn.dataset.i)];
-    btn.onclick = () => {
-      document.querySelectorAll('.fixture-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      showFixture(fx);
-      document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    };
+  const hasFixtureSoon = id => allFixtures.some(fx => String(fx.homeId) === id || String(fx.awayId) === id);
+  el.innerHTML = `<div class="picker-label">Your teams</div>
+    <div class="follow-chips">${followingTeams.map(t => {
+      const id = String(t.team_id), name = (t.team_name || '').replace(/"/g, '&quot;');
+      return `<button class="follow-chip" data-id="${id}" data-name="${name}" data-crest="${t.crest || ''}" title="${name}">
+        <span class="initial">${(t.team_name || '?').charAt(0)}</span>
+        ${t.crest ? `<img src="${t.crest}" alt="" loading="lazy" onerror="this.remove()">` : ''}
+        ${hasFixtureSoon(id) ? '<span class="dot" title="Fixture in the next 10 days"></span>' : ''}
+      </button>`;
+    }).join('')}</div>`;
+  el.querySelectorAll('.follow-chip').forEach(btn => {
+    btn.onclick = () => showTeam(btn.dataset.id, btn.dataset.name, btn.dataset.crest, null);
   });
 }
 
@@ -1021,11 +1030,11 @@ window.showTeam = async function (teamId, teamName, crest, competitionId) {
 
   const nextFixtures = allFixtures.filter(f => String(f.homeId) === teamId || String(f.awayId) === teamId);
   const nextHtml = nextFixtures.length
-    ? nextFixtures.map(fx => `
+    ? `<div class="fixtures">` + nextFixtures.map(fx => `
         <button class="fixture-btn team-next-btn" data-fx-id="${fx.id}">
           <span class="fixture-teams">${fx.crest ? `<img class="crest" src="${fx.crest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${fx.home}<span class="vs">v</span>${fx.awayCrest ? `<img class="crest" src="${fx.awayCrest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${fx.away}</span>
           <span class="fixture-time">${ukTimeShort(fx.date)}</span>
-        </button>`).join('')
+        </button>`).join('') + `</div>`
     : `<p class="note">No fixtures in the next 10 days.</p>`;
 
   if (!competitionId) {
