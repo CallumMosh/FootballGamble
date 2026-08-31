@@ -80,7 +80,7 @@
   .featured-cta{font-family:'Space Mono',monospace;font-size:12px;color:var(--pitch);font-weight:700}
   .section-h{margin:26px 0 12px;display:flex;align-items:center;gap:12px}
   .section-h::after{content:"";flex:1;height:1px;background:var(--line)}
-  .fixtures{display:grid;gap:8px}
+  .fixtures{display:grid;gap:8px;margin-bottom:14px}
   .fixture-btn{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:14px;
     background:var(--panel);border:1px solid transparent;border-radius:14px;padding:15px 18px;
     transition:border-color .15s,transform .15s,background .15s}
@@ -113,14 +113,16 @@
     scrollbar-width:none;-ms-overflow-style:none}
   .follow-chips::-webkit-scrollbar{display:none}
   .follow-chip{all:unset;box-sizing:border-box;cursor:pointer;position:relative;flex-shrink:0;
-    width:52px;height:52px;border-radius:50%;background:var(--panel-2);border:1px solid var(--line);
-    display:flex;align-items:center;justify-content:center;overflow:hidden;transition:border-color .15s}
-  .follow-chip:hover{border-color:var(--pitch)}
-  .follow-chip .initial{font-family:'Montserrat',sans-serif;font-weight:700;font-size:18px;color:var(--muted)}
-  .follow-chip img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:9px;
+    width:52px;height:52px;display:flex;align-items:center;justify-content:center}
+  .chip-avatar{position:relative;width:100%;height:100%;border-radius:50%;overflow:hidden;
+    background:var(--panel-2);border:1px solid var(--line);display:flex;align-items:center;
+    justify-content:center;transition:border-color .15s}
+  .follow-chip:hover .chip-avatar{border-color:var(--pitch)}
+  .chip-avatar .initial{font-family:'Montserrat',sans-serif;font-weight:700;font-size:18px;color:var(--muted)}
+  .chip-avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:9px;
     box-sizing:border-box;background:var(--panel-2)}
-  .follow-chip .dot{position:absolute;bottom:1px;right:1px;width:12px;height:12px;border-radius:50%;
-    background:var(--pitch);border:2px solid var(--bg)}
+  .follow-chip .dot{position:absolute;bottom:0;right:0;width:14px;height:14px;border-radius:50%;
+    background:var(--pitch);border:2px solid var(--bg);z-index:2}
   .disclaimer{font-size:13px;color:var(--muted);border-left:2px solid var(--line);
     padding-left:14px;margin:16px 0 4px;line-height:1.6}
   .cmp-card{background:var(--panel);border-radius:14px;padding:18px 20px;margin-bottom:10px}
@@ -983,8 +985,10 @@ function renderFollowing() {
     <div class="follow-chips">${followingTeams.map(t => {
       const id = String(t.team_id), name = (t.team_name || '').replace(/"/g, '&quot;');
       return `<button class="follow-chip" data-id="${id}" data-name="${name}" data-crest="${t.crest || ''}" title="${name}">
-        <span class="initial">${(t.team_name || '?').charAt(0)}</span>
-        ${t.crest ? `<img src="${t.crest}" alt="" loading="lazy" onerror="this.remove()">` : ''}
+        <span class="chip-avatar">
+          <span class="initial">${(t.team_name || '?').charAt(0)}</span>
+          ${t.crest ? `<img src="${t.crest}" alt="" loading="lazy" onerror="this.remove()">` : ''}
+        </span>
         ${hasFixtureSoon(id) ? '<span class="dot" title="Fixture in the next 10 days"></span>' : ''}
       </button>`;
     }).join('')}</div>`;
