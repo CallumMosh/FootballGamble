@@ -1307,7 +1307,9 @@ async function loadTable(cid, name) {
     const d = await getStandings(cid);
     const groups = (d && d.groups) ? d.groups.filter(g => g.rows.length) : [];
     if (!groups.length) {
-      body.innerHTML = `<div class="sub">No table available for ${name} right now — this fills in automatically once the season or group stage gets underway.</div>`;
+      body.innerHTML = d.fetchFailed
+        ? `<div class="sub">Couldn't load the ${name} table right now — likely a brief rate limit on the free data source (it allows 10 requests a minute). Try again shortly.</div>`
+        : `<div class="sub">No table available for ${name} right now — this fills in automatically once the season or group stage gets underway.</div>`;
       return;
     }
     body.innerHTML = groups.map(g => `
@@ -1653,7 +1655,12 @@ async function loadBrowseTeams(cid, name) {
   try {
     const standings = await getStandings(cid); // same cache used everywhere else
     const rows = (standings.groups || []).flatMap(g => g.rows || []);
-    if (!rows.length) { el.innerHTML = `<p class="note">No team data available for ${name} right now.</p>`; return; }
+    if (!rows.length) {
+      el.innerHTML = standings.fetchFailed
+        ? `<p class="note">Couldn't load ${name} teams right now — likely a brief rate limit on the free data source (it allows 10 requests a minute). Try again shortly.</p>`
+        : `<p class="note">No team data available for ${name} right now.</p>`;
+      return;
+    }
     rows.sort((a, b) => a.position - b.position);
     el.innerHTML = `<div class="fixtures">` + rows.map(r => `
       <button class="fixture-btn browse-team-btn" data-id="${r.id || ''}" data-name="${(r.team || '').replace(/"/g, '&quot;')}" data-crest="${r.crest || ''}" data-cid="${cid}">
@@ -1729,9 +1736,15 @@ async function getStandings(cid) {
   if (standingsCache[cid]) return standingsCache[cid];
   try {
     const r = await fetchJson(`/api/standings?competition=${cid}`);
+    r.fetchFailed = false;
     standingsCache[cid] = r;
     return r;
-  } catch (e) { return { positions: {}, positionsByName: {}, total: 0, groups: [] }; }
+  } catch (e) {
+    // don't cache a failure — a retry a moment later (once any rate limit has
+    // cleared) should genuinely try again, not keep returning this same empty shell
+    console.error('getStandings failed:', cid, e);
+    return { positions: {}, positionsByName: {}, total: 0, groups: [], fetchFailed: true };
+  }
 }
 
 // recent form for a fixture, pulled from the competition feed (works for national
