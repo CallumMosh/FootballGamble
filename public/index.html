@@ -106,6 +106,9 @@
     color:var(--muted);vertical-align:middle;margin:0 4px;line-height:1;transition:color .15s,transform .1s}
   .follow-star:hover{transform:scale(1.15)}
   .follow-star.on{color:var(--pitch)}
+  .team-link{cursor:pointer;text-decoration:underline;text-decoration-color:transparent;
+    text-underline-offset:3px;transition:text-decoration-color .15s}
+  .team-link:hover{text-decoration-color:currentColor}
   .following-btn{border-color:rgba(45,212,191,.35)}
   .disclaimer{font-size:13px;color:var(--muted);border-left:2px solid var(--line);
     padding-left:14px;margin:16px 0 4px;line-height:1.6}
@@ -447,6 +450,11 @@
     <section class="dash" id="recordSection"></section>
   </div>
 
+  <div class="view" id="view-team" style="display:none">
+    <button class="method-back" data-back>← Back</button>
+    <div id="teamBody"></div>
+  </div>
+
   <div class="view" id="view-method" style="display:none">
     <button class="method-back" data-back>← Back</button>
     <div class="picker-label">Methodology</div>
@@ -732,6 +740,7 @@ function ukTimeFull(iso) {
 const blend = (a, b) => Math.round((a + b) / 2);
 const colour = lvl => lvl==='good'?'var(--good)':lvl==='meh'?'var(--meh)':'var(--bad)';
 const form = g => g.slice(0, 5).map(m => m.gf > m.ga ? 'W' : m.gf < m.ga ? 'L' : 'D');
+const badges = g => form(g).map(r => `<span class="badge ${r}">${r}</span>`).join('');
 
 // plain-English definitions for the (i) tooltips
 const GLOSS = {
@@ -952,6 +961,105 @@ function renderFollowing() {
       showFixture(fx);
       document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
+  });
+}
+
+/* ============================================================
+   TEAM PAGE — click a team's name to see everything available on
+   them in one place: next fixture(s), league position, recent form,
+   game-by-game results. Reuses data already fetched elsewhere
+   (compteams.js for recent games, standings.js for the table row)
+   rather than adding a new backend endpoint.
+   ============================================================ */
+function teamResultsTable(games, teamName) {
+  if (!games.length) return '<p class="note">No recent results found.</p>';
+  const rows = games.map(m => {
+    const homeSide = m.venue === 'H';
+    const ftH = homeSide ? m.gf : m.ga, ftA = homeSide ? m.ga : m.gf;
+    const left = homeSide ? `<b>${teamName}</b>` : (m.opponent || '—');
+    const right = homeSide ? (m.opponent || '—') : `<b>${teamName}</b>`;
+    const result = m.gf > m.ga ? 'W' : m.gf < m.ga ? 'L' : 'D';
+    const when = m.date ? new Date(m.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : '';
+    return `<tr><td class="match">${left} ${ftH}\u2013${ftA} ${right}</td><td>${when}</td>
+      <td><span class="badge ${result}">${result}</span></td></tr>`;
+  }).join('');
+  return `<table class="games"><thead><tr><th>Match</th><th>Date</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+window.showTeam = async function (teamId, teamName, crest, competitionId) {
+  teamId = String(teamId);
+  showView('team');
+  const body = document.getElementById('teamBody');
+  body.innerHTML = loaderHTML(`Loading ${teamName}…`);
+
+  // if we weren't handed a competition (e.g. opened from somewhere without one
+  // in context), find it from whichever upcoming fixture this team is in
+  if (!competitionId) {
+    const fx = allFixtures.find(f => String(f.homeId) === teamId || String(f.awayId) === teamId);
+    competitionId = fx?.competitionId || null;
+  }
+
+  const nextFixtures = allFixtures.filter(f => String(f.homeId) === teamId || String(f.awayId) === teamId);
+  const nextHtml = nextFixtures.length
+    ? nextFixtures.map(fx => `
+        <button class="fixture-btn team-next-btn" data-fx-id="${fx.id}">
+          <span class="fixture-teams">${fx.crest ? `<img class="crest" src="${fx.crest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${fx.home}<span class="vs">v</span>${fx.awayCrest ? `<img class="crest" src="${fx.awayCrest}" alt="" loading="lazy" onerror="this.remove()">` : ''}${fx.away}</span>
+          <span class="fixture-time">${ukTimeShort(fx.date)}</span>
+        </button>`).join('')
+    : `<p class="note">No fixtures in the next 10 days.</p>`;
+
+  if (!competitionId) {
+    // no competition context at all — show what we can (crest, name, next fixture
+    // if any) and stop there rather than guessing
+    body.innerHTML = `
+      <div class="matchup">${followStar(teamId, teamName, crest)}${crest ? `<img class="crest" src="${crest}" alt="" style="width:.7em;vertical-align:middle;margin-right:8px">` : ''}${teamName}</div>
+      <div class="section-h">Next fixture</div>${nextHtml}
+      <p class="note">No recent form or league data available for this team right now.</p>`;
+    wireTeamPageButtons(nextFixtures);
+    refreshFollowStars();
+    return;
+  }
+
+  try {
+    const [standings, formData] = await Promise.all([
+      getStandings(competitionId),
+      fetchJson(`/api/compteams?competition=${competitionId}&home=${teamId}&away=${teamId}`),
+    ]);
+    const games = formData.home || [];
+    const allRows = (standings.groups || []).flatMap(g => g.rows || []);
+    const row = allRows.find(r => r.team === teamName)
+      || allRows.find(r => standings.positions[teamId] && r.position === standings.positions[teamId]);
+
+    const tableHtml = row ? `
+      <div class="cmp-card">
+        <div class="cmp-title">League position</div>
+        <div class="market-top"><span class="market-name">#${row.position} in the table</span>
+          <span class="market-stat" style="font-size:20px">${row.points} pts</span></div>
+        <div class="working">Played ${row.played} · W${row.won} D${row.draw} L${row.lost} · GF ${row.gf} GA ${row.ga} (GD ${row.gd > 0 ? '+' : ''}${row.gd})</div>
+      </div>` : '';
+
+    body.innerHTML = `
+      <div class="matchup">${followStar(teamId, teamName, crest)}${crest ? `<img class="crest" src="${crest}" alt="" style="width:.7em;vertical-align:middle;margin-right:8px">` : ''}${teamName}</div>
+      <div class="section-h">Next fixture${nextFixtures.length > 1 ? 's' : ''}</div>${nextHtml}
+      ${tableHtml}
+      ${games.length ? `<div class="section-h">Recent form</div><div class="form-team">${badges(games)}</div>` : ''}
+      <div class="section-h">Recent results</div>${teamResultsTable(games, teamName)}`;
+    wireTeamPageButtons(nextFixtures);
+    refreshFollowStars();
+  } catch (e) {
+    console.error('showTeam failed:', e);
+    body.innerHTML = `
+      <div class="matchup">${teamName}</div>
+      <div class="section-h">Next fixture${nextFixtures.length > 1 ? 's' : ''}</div>${nextHtml}
+      <p class="note">${e.message}</p>`;
+    wireTeamPageButtons(nextFixtures);
+  }
+};
+function wireTeamPageButtons(fixtures) {
+  document.querySelectorAll('.team-next-btn').forEach(btn => {
+    const fx = fixtures.find(f => String(f.id) === btn.dataset.fxId);
+    if (!fx) return;
+    btn.onclick = () => { showFixture(fx); showView('home'); document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' }); };
   });
 }
 
@@ -1812,8 +1920,6 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
       temperedCard(`${fx.away} — Under 1.5 Conceded`, 'conc15', away, m => m.ga <= 1, 100 - hScore, `${fx.home} score in ${hScore}%`, 'Rarely concede more than one.', 'Have been shipping goals lately.', 'held to 1 or fewer', 'conceded 2+', fx.away, fx, 'conc15_away'),
     ];
 
-    const badges = g => form(g).map(r => `<span class="badge ${r}">${r}</span>`).join('');
-
     let lookbackText = home.length === away.length
       ? `Based on each side's last ${home.length} games.`
       : `Based on recent form — ${fx.home}: last ${home.length}, ${fx.away}: last ${away.length}.`;
@@ -1850,7 +1956,7 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
     const panesHtml = tabDefs.map((t, i) => `<div class="insight-pane" id="${t.id}"${i === 0 ? '' : ' style="display:none"'}>${t.html}</div>`).join('');
 
     resultsEl.innerHTML = `
-      <div class="matchup">${followStar(fx.homeId, fx.home, fx.crest)}${fx.home} <span class="at">vs</span> ${fx.away}${followStar(fx.awayId, fx.away, fx.awayCrest)}</div>
+      <div class="matchup">${followStar(fx.homeId, fx.home, fx.crest)}<span class="team-link" data-team-id="${fx.homeId}" data-team-name="${fx.home.replace(/"/g, '&quot;')}" data-crest="${fx.crest || ''}" data-cid="${fx.competitionId || ''}">${fx.home}</span> <span class="at">vs</span> <span class="team-link" data-team-id="${fx.awayId}" data-team-name="${fx.away.replace(/"/g, '&quot;')}" data-crest="${fx.awayCrest || ''}" data-cid="${fx.competitionId || ''}">${fx.away}</span>${followStar(fx.awayId, fx.away, fx.awayCrest)}</div>
       ${fx.date ? `<div class="kickoff">Kick-off: ${ukTimeFull(fx.date)}</div>` : ''}
       <p class="disclaimer">${lookbackText} Every figure lists the games behind it —
         tap “show the games” to verify. Descriptive, not a prediction — then use the odds box to test for value.</p>
@@ -1872,6 +1978,9 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
         });
       };
     });
+    resultsEl.querySelectorAll('.team-link').forEach(el => {
+      el.onclick = () => showTeam(el.dataset.teamId, el.dataset.teamName, el.dataset.crest, el.dataset.cid);
+    });
     resultsEl.scrollIntoView({ behavior:'smooth', block:'nearest' });
     syncSlipButtons();
 }
@@ -1880,8 +1989,8 @@ function renderFixture(fx, home, away, positions, h2h, homeSpansPriorSeason, awa
 // nav; 'method'/'privacy'/'terms' are read-once reference pages, reached only via
 // footer links (not core actions, so they deliberately don't get their own nav slot).
 // Everything is already loaded client-side, so switching costs nothing.
-const VIEWS = ['home', 'angles', 'tables', 'record', 'account', 'method', 'privacy', 'terms'];
-const REFERENCE_VIEWS = ['method', 'privacy', 'terms'];
+const VIEWS = ['home', 'angles', 'tables', 'record', 'account', 'method', 'privacy', 'terms', 'team'];
+const REFERENCE_VIEWS = ['method', 'privacy', 'terms', 'team'];
 let lastNavView = 'home'; // where "back" from a reference page should return to
 
 function showView(name) {
