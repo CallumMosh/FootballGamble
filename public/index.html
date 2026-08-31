@@ -922,12 +922,32 @@ window.toggleFollow = async function (btn) {
   renderFollowing();
   if (wasFollowing) {
     const { error } = await supa.from('follows').delete().eq('team_id', teamId);
-    if (error) { console.error('unfollow failed:', error); followingIds.add(teamId); refreshFollowStars(); renderFollowing(); }
+    if (error) { console.error('unfollow failed:', error); followingIds.add(teamId); refreshFollowStars(); renderFollowing(); followErr("Couldn't unfollow — please try again."); }
   } else {
-    const { error } = await supa.from('follows').insert({ team_id: teamId, team_name: teamName, crest });
-    if (error) { console.error('follow failed:', error); followingIds.delete(teamId); refreshFollowStars(); renderFollowing(); }
+    const { error } = await supa.from('follows').insert({ user_id: currentUser.id, team_id: teamId, team_name: teamName, crest });
+    if (error) { console.error('follow failed:', error); followingIds.delete(teamId); refreshFollowStars(); renderFollowing(); followErr("Couldn't follow — please try again."); }
   }
 };
+// a follow/unfollow failure used to only log to the console and silently revert —
+// invisible unless someone happened to have devtools open. This puts it on screen.
+function followErr(msg) {
+  let el = document.getElementById('followErrMsg');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'followErrMsg';
+    el.className = 'note';
+    el.style.color = 'var(--bad)';
+    document.body.appendChild(el);
+    el.style.position = 'fixed'; el.style.left = '50%'; el.style.bottom = '90px';
+    el.style.transform = 'translateX(-50%)'; el.style.background = 'var(--panel)';
+    el.style.border = '1px solid var(--bad)'; el.style.borderRadius = '10px';
+    el.style.padding = '10px 16px'; el.style.zIndex = '400'; el.style.maxWidth = '90vw';
+  }
+  el.textContent = msg;
+  el.style.display = 'block';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.style.display = 'none'; }, 4000);
+}
 async function loadFollows() {
   if (!currentUser) { followingIds = new Set(); renderFollowing(); return; }
   const { data, error } = await supa.from('follows').select('team_id');
